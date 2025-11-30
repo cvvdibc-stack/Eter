@@ -1,15 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { 
   Shield, Map, Store, HeartPulse, User, LogOut, Crown, Swords, Skull, Book, Gem, Calendar, Coins, Gavel, Trophy, Dumbbell
 } from 'lucide-react';
+import { calculateDerivedStats } from '../../utils/formulas';
 
 export const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { character, view, changeView, signOut } = useGame();
+  const [hoveredHp, setHoveredHp] = useState(false);
+  const [hoveredExp, setHoveredExp] = useState(false);
 
   if (!character) {
     return <>{children}</>;
   }
+
+  // Calculate stats for HP and EXP bars
+  const equipmentList = character.equipment 
+    ? Object.values(character.equipment).filter((i): i is any => i !== null)
+    : [];
+  const stats = calculateDerivedStats(
+    character.baseStats,
+    character.level,
+    character.profession,
+    equipmentList,
+    character.activeTalismans || [],
+    character.boughtStats
+  );
+
+  const hpPercent = stats.maxHp > 0 ? Math.floor((character.currentHp / stats.maxHp) * 100) : 0;
+  const expPercent = character.maxExp > 0 ? Math.floor((character.exp / character.maxExp) * 100) : 0;
+  const hpRegen = parseFloat((2 + (stats.hpRegen || 0)).toFixed(1));
 
   const MenuButton = ({ icon: Icon, label, targetView, active }: any) => (
     <button
@@ -55,10 +75,49 @@ export const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }
         </div>
 
         {/* RESOURCES */}
-        <div className="flex items-center gap-8 bg-black/40 px-8 py-2 rounded-full border border-white/5 shadow-inner">
+        <div className="flex items-center gap-6 bg-black/40 px-6 py-2 rounded-full border border-white/5 shadow-inner">
           
+          {/* HP Bar */}
+          <div 
+            className="relative group"
+            onMouseEnter={() => setHoveredHp(true)}
+            onMouseLeave={() => setHoveredHp(false)}
+          >
+            <div className="w-32 h-6 bg-slate-900/80 rounded-full overflow-hidden border border-red-900/50 shadow-inner relative flex items-center">
+              {/* Animated background glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-red-900/20 via-red-800/30 to-red-900/20 animate-pulse"></div>
+              
+              {/* HP Fill */}
+              <div 
+                className="h-full bg-gradient-to-r from-red-600 via-red-500 to-red-400 transition-all duration-700 relative overflow-hidden flex items-center"
+                style={{ width: `${hpPercent}%` }}
+              >
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]"></div>
+                {/* Inner glow */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
+              </div>
+              
+              {/* HP Text Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center px-2">
+                <span className="text-[9px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-mono truncate">
+                  {character.currentHp}/{stats.maxHp}
+                </span>
+              </div>
+            </div>
+            
+            {/* Tooltip */}
+            {hoveredHp && (
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-black/95 border border-red-500/50 rounded text-[10px] text-white font-bold whitespace-nowrap z-50 shadow-lg">
+                Regeneracja: +{hpRegen}% HP / min
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-6 bg-white/10"></div>
+
           {/* Level Display */}
-          <div className="flex items-center gap-3 mr-4">
+          <div className="flex items-center gap-3">
               <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Poziom</span>
               <span className="text-xl font-mono text-white font-bold text-shadow-lg">{character.level}</span>
           </div>
@@ -77,6 +136,45 @@ export const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }
             <Gem className="text-red-500 drop-shadow-lg" size={20} />
             <span className="font-mono text-lg text-red-100 font-bold">{character.premiumCurrency}</span>
             <span className="text-xs text-slate-500 uppercase ml-1">Rubiny</span>
+          </div>
+
+          <div className="w-px h-6 bg-white/10"></div>
+
+          {/* EXP Bar */}
+          <div 
+            className="relative group"
+            onMouseEnter={() => setHoveredExp(true)}
+            onMouseLeave={() => setHoveredExp(false)}
+          >
+            <div className="w-32 h-6 bg-slate-900/80 rounded-full overflow-hidden border border-yellow-900/50 shadow-inner relative flex items-center">
+              {/* Animated background glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-900/20 via-yellow-800/30 to-yellow-900/20 animate-pulse"></div>
+              
+              {/* EXP Fill */}
+              <div 
+                className="h-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-300 transition-all duration-700 relative overflow-hidden flex items-center"
+                style={{ width: `${expPercent}%` }}
+              >
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_2s_infinite]"></div>
+                {/* Inner glow */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent"></div>
+              </div>
+              
+              {/* EXP Text Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center px-2">
+                <span className="text-[9px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-mono truncate">
+                  {character.exp}/{character.maxExp}
+                </span>
+              </div>
+            </div>
+            
+            {/* Tooltip */}
+            {hoveredExp && (
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-black/95 border border-yellow-500/50 rounded text-[10px] text-white font-bold whitespace-nowrap z-50 shadow-lg">
+                Postęp: {expPercent}% do następnego poziomu
+              </div>
+            )}
           </div>
         </div>
 

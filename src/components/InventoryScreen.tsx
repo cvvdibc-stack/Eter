@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { calculateDerivedStats } from '../utils/formulas';
-import { Shield, Sword, PlusCircle, X } from 'lucide-react';
+import { Shield, Sword, PlusCircle, X, Lock } from 'lucide-react';
 import { ItemType, Item } from '../types';
 import { getAvatarSrc } from '../utils/assets';
 import { ItemTooltip } from './ItemTooltip';
@@ -59,7 +59,7 @@ const StatsCategory: React.FC<{ title: string, color: string, children: React.Re
 );
 
 export const InventoryScreen: React.FC = () => {
-  const { character, equipItem, unequipItem, moveItem, showToast } = useGame();
+  const { character, equipItem, unequipItem, moveItem, showToast, lockItem, unlockItem, quicksellAll } = useGame();
   const [imgError, setImgError] = useState(false);
   
   // Updated State Type for Comparison
@@ -198,7 +198,7 @@ export const InventoryScreen: React.FC = () => {
     <div className="flex flex-col lg:flex-row justify-center gap-8 h-[calc(100vh-140px)] overflow-hidden p-4 lg:p-6 max-w-7xl mx-auto">
       
       {/* LEFT COLUMN: Avatar & Stats */}
-      <div className="w-full lg:w-[340px] flex flex-col gap-4 h-full">
+      <div className="w-full lg:w-[340px] flex flex-col gap-4 h-full min-h-0">
         
         {/* Avatar */}
         <div className="w-full h-[320px] bg-[#161b22] border-2 border-amber-900/30 rounded-xl overflow-hidden relative shadow-2xl shrink-0 group">
@@ -225,7 +225,7 @@ export const InventoryScreen: React.FC = () => {
         </div>
 
         {/* Stats Panel */}
-        <div className="flex-1 bg-[#161b22] border-2 border-white/10 p-4 rounded-xl shadow-lg flex flex-col gap-2 overflow-visible z-20">
+        <div className="flex-1 bg-[#161b22] border-2 border-white/10 p-4 rounded-xl shadow-lg flex flex-col gap-2 overflow-hidden z-20">
             <div>
                 <div className="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
                     <h3 className="text-xs text-slate-500 uppercase font-bold">Statystyki</h3>
@@ -235,34 +235,6 @@ export const InventoryScreen: React.FC = () => {
                     >
                         <PlusCircle size={12} /> Więcej
                     </button>
-                </div>
-                
-                {/* HP BAR */}
-                <div className="mb-3">
-                    <div className="flex justify-between text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider">
-                        <span>Zdrowie</span>
-                        <span className="text-green-400 font-mono">{character.currentHp} / {stats.maxHp}</span>
-                    </div>
-                    <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-white/5 relative group">
-                        <div className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500" style={{ width: `${hpPercent}%` }}></div>
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[9px] font-bold bg-black/80 text-white">
-                            +{parseFloat((2 + (stats.hpRegen || 0)).toFixed(1))}% HP / min
-                        </div>
-                    </div>
-                </div>
-
-                {/* EXP BAR */}
-                <div className="mb-3">
-                    <div className="flex justify-between text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider">
-                        <span>Postęp</span>
-                        <span>{expPercent}%</span>
-                    </div>
-                    <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-white/5 relative group">
-                        <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400" style={{ width: `${expPercent}%` }}></div>
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[9px] font-bold bg-black/80 text-white">
-                            {character.exp} / {character.maxExp} EXP
-                        </div>
-                    </div>
                 </div>
 
                 {renderStatBar('Siła', stats.strength, stats.statCap, 'bg-red-700', 'strength')}
@@ -344,6 +316,7 @@ export const InventoryScreen: React.FC = () => {
                  {inventorySlice.map((item, i) => {
                     const actualIndex = activeTab * 24 + i;
                     const isUnusable = item && (item.levelReq > character.level || (item.classReq && item.classReq !== character.profession));
+                    const isLocked = item && (character.lockedItems || []).includes(item.id);
 
                     return (
                         <div 
@@ -355,6 +328,15 @@ export const InventoryScreen: React.FC = () => {
                                     return;
                                 }
                                 equipItem(item, actualIndex);
+                            }}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                if (!item) return;
+                                if (isLocked) {
+                                    unlockItem(item.id);
+                                } else {
+                                    lockItem(item.id);
+                                }
                             }}
                             onMouseEnter={(e) => item && setHoveredItem({ 
                                 item, 
@@ -370,12 +352,19 @@ export const InventoryScreen: React.FC = () => {
                                 ${item 
                                     ? (isUnusable 
                                         ? 'bg-red-900/20 border-red-900/50 hover:border-red-500 opacity-75 grayscale-[0.5]' 
+                                        : isLocked
+                                        ? 'bg-[#1a1d24] border-blue-700 hover:border-blue-500'
                                         : 'bg-[#1a1d24] border-slate-700 hover:border-amber-500')
                                     : 'bg-[#0b0d10] border-white/5'}`}
                         >
                              {item && (
                                 <div className="p-0.5 pointer-events-none">
                                     <ItemIcon item={item} size={46} />
+                                </div>
+                             )}
+                             {isLocked && (
+                                <div className="absolute top-0.5 right-0.5 bg-blue-900/90 border border-blue-600 rounded p-0.5 pointer-events-none z-10">
+                                    <Lock size={10} className="text-blue-300" />
                                 </div>
                              )}
                              {isUnusable && <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none text-red-500 font-bold text-xl">✕</div>}
@@ -393,7 +382,7 @@ export const InventoryScreen: React.FC = () => {
               equippedItem={hoveredItem.equippedComparison}
               playerLevel={character.level}
               playerClass={character.profession}
-              rect={hoveredItem.rect} 
+              rect={hoveredItem.rect}
           />
       )}
 

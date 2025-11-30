@@ -74,6 +74,11 @@ interface GameContextType extends GameState {
 
   loadRanking: () => Promise<any[]>;
   trainStat: (stat: 'strength' | 'dexterity' | 'vitality' | 'intelligence') => Promise<void>;
+  
+  // Item Locking
+  lockItem: (itemId: string) => void;
+  unlockItem: (itemId: string) => void;
+  quicksellAll: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -400,6 +405,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 unlocked_bonuses: d.unlocked_bonuses || {},
                 dungeon_progress: d.dungeon_progress || {},
                 kill_stats: d.kill_stats || {},
+                lockedItems: d.locked_items || [],
                 currentHp: d.current_hp !== undefined ? d.current_hp : maxHp, 
                 lastRegenTime: d.last_regen_time || Date.now()
             };
@@ -833,6 +839,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const item = character.inventory[index];
       if (!item) return;
 
+      // Check if item is locked
+      const lockedItems = character.lockedItems || [];
+      if (lockedItems.includes(item.id)) {
+          addLog("Ten przedmiot jest zablokowany i nie może być sprzedany!");
+          return;
+      }
+
       const sellPrice = Math.floor(item.value * 0.4); // 40% value
       
       const newInv = [...character.inventory];
@@ -1062,6 +1075,62 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCharacter(prev => prev ? { ...prev, inventory: newInventory } : null);
   };
 
+  const lockItem = (itemId: string) => {
+      if (!character) return;
+      const lockedItems = character.lockedItems || [];
+      if (lockedItems.includes(itemId)) return; // Already locked
+      
+      setCharacter(prev => prev ? {
+          ...prev,
+          lockedItems: [...lockedItems, itemId]
+      } : null);
+      
+      addLog("Przedmiot zablokowany przed sprzedażą.");
+  };
+
+  const unlockItem = (itemId: string) => {
+      if (!character) return;
+      const lockedItems = character.lockedItems || [];
+      if (!lockedItems.includes(itemId)) return; // Not locked
+      
+      setCharacter(prev => prev ? {
+          ...prev,
+          lockedItems: lockedItems.filter(id => id !== itemId)
+      } : null);
+      
+      addLog("Przedmiot odblokowany.");
+  };
+
+  const quicksellAll = () => {
+      if (!character) return;
+      const lockedItems = character.lockedItems || [];
+      let totalGold = 0;
+      let soldCount = 0;
+      
+      const newInv = character.inventory.map((item, index) => {
+          if (!item) return null;
+          if (lockedItems.includes(item.id)) return item; // Keep locked items
+          
+          const sellPrice = Math.floor(item.value * 0.4);
+          totalGold += sellPrice;
+          soldCount++;
+          return null;
+      });
+
+      if (soldCount === 0) {
+          addLog("Brak przedmiotów do sprzedania (wszystkie są zablokowane lub plecak jest pusty).");
+          return;
+      }
+
+      setCharacter(prev => prev ? {
+          ...prev,
+          gold: prev.gold + totalGold,
+          inventory: newInv
+      } : null);
+
+      addLog(`Szybka sprzedaż: ${soldCount} przedmiotów za ${totalGold} złota.`);
+  };
+
   const loadRanking = async () => {
       const { data, error } = await supabase
           .from('characters')
@@ -1188,6 +1257,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyMarketListing,
       cancelMarketListing,
       moveItem,
+      lockItem,
+      unlockItem,
+      quicksellAll,
       showToast,
       loadRanking,
       trainStat

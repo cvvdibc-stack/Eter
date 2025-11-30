@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { Item } from '../types';
-import { RefreshCw, Coins, User, ShoppingBag, Gem } from 'lucide-react';
+import { RefreshCw, Coins, User, ShoppingBag, Gem, Lock } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 import { ItemIcon } from './ItemIcon';
 
 export const ShopScreen: React.FC = () => {
-    const { character, merchantInventory, refreshMerchant, buyItem, sellItem, payGold } = useGame();
+    const { character, merchantInventory, refreshMerchant, buyItem, sellItem, payGold, lockItem, unlockItem, quicksellAll } = useGame();
     
     const [merchantTab, setMerchantTab] = useState<0 | 1>(0);
     const [playerTab, setPlayerTab] = useState<0 | 1>(0);
@@ -36,22 +36,43 @@ export const ShopScreen: React.FC = () => {
             <div className="grid grid-cols-6 gap-1.5 content-start">
                 {slice.map((item, i) => {
                     const actualIndex = tab * 24 + i;
+                    const isLocked = item && isSelling && (character.lockedItems || []).includes(item.id);
+                    
                     return (
                         <div 
                             key={actualIndex}
-                            onClick={() => item && onItemClick(item, actualIndex)}
+                            onClick={() => {
+                                if (!item) return;
+                                onItemClick(item, actualIndex);
+                            }}
+                            onContextMenu={(e) => {
+                                if (!item || !isSelling) return;
+                                e.preventDefault();
+                                if (isLocked) {
+                                    unlockItem(item.id);
+                                } else {
+                                    lockItem(item.id);
+                                }
+                            }}
                             onMouseEnter={(e) => item && setHoveredItem({ item, rect: e.currentTarget.getBoundingClientRect() })}
                             onMouseLeave={() => setHoveredItem(null)}
                             className={`w-10 h-10 border-2 rounded flex items-center justify-center relative group cursor-pointer transition-colors
                                 ${item 
                                     ? isSelling 
-                                        ? 'bg-[#1a1d24] border-slate-700 hover:border-green-500'
+                                        ? isLocked
+                                        ? 'bg-[#1a1d24] border-blue-700 hover:border-blue-500'
+                                        : 'bg-[#1a1d24] border-slate-700 hover:border-green-500'
                                         : 'bg-[#1a1d24] border-slate-700 hover:border-amber-500' 
                                     : 'bg-[#0b0d10] border-white/5'}`}
                         >
                              {item && (
                                 <div className="p-0.5 pointer-events-none">
                                     <ItemIcon item={item} size={32} />
+                                </div>
+                             )}
+                             {isLocked && (
+                                <div className="absolute top-0 right-0 bg-blue-900/90 border border-blue-600 rounded p-0.5 pointer-events-none z-10">
+                                    <Lock size={8} className="text-blue-300" />
                                 </div>
                              )}
                         </div>
@@ -141,9 +162,19 @@ export const ShopScreen: React.FC = () => {
                             <h4 className="font-bold text-slate-200 flex items-center gap-2">
                                 <User size={18} className="text-green-500"/> Twój Plecak ({character.inventory.length}/48)
                             </h4>
-                            <div className="flex gap-1">
-                                <button onClick={() => setPlayerTab(0)} className={`text-[9px] px-1.5 py-0.5 rounded border ${playerTab === 0 ? 'border-green-500 text-green-200' : 'border-slate-700 text-slate-500'}`}>I</button>
-                                <button onClick={() => setPlayerTab(1)} className={`text-[9px] px-1.5 py-0.5 rounded border ${playerTab === 1 ? 'border-green-500 text-green-200' : 'border-slate-700 text-slate-500'}`}>II</button>
+                            <div className="flex gap-2 items-center">
+                                <button 
+                                    onClick={quicksellAll}
+                                    className="text-[9px] px-2 py-0.5 rounded border bg-green-900/50 border-green-600 text-green-200 hover:bg-green-800/70 flex items-center gap-1 transition-colors"
+                                    title="Szybka sprzedaż wszystkich niezablokowanych przedmiotów"
+                                >
+                                    <Coins size={9} />
+                                    Sprzedaj Wszystko
+                                </button>
+                                <div className="flex gap-1">
+                                    <button onClick={() => setPlayerTab(0)} className={`text-[9px] px-1.5 py-0.5 rounded border ${playerTab === 0 ? 'border-green-500 text-green-200' : 'border-slate-700 text-slate-500'}`}>I</button>
+                                    <button onClick={() => setPlayerTab(1)} className={`text-[9px] px-1.5 py-0.5 rounded border ${playerTab === 1 ? 'border-green-500 text-green-200' : 'border-slate-700 text-slate-500'}`}>II</button>
+                                </div>
                             </div>
                         </div>
 

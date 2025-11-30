@@ -188,7 +188,8 @@ export interface Character {
   completed_dungeons?: string[]; 
   unlocked_bonuses?: Record<string, BonusType[]>;
   dungeon_progress?: Record<string, number>; 
-  kill_stats?: Record<string, number>; 
+  kill_stats?: Record<string, number>;
+  lockedItems?: string[]; // Lista ID zablokowanych itemów (nie można sprzedać)
 }
 
 export interface CombatTurn {

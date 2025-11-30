@@ -44,6 +44,15 @@ export const DoctorScreen: React.FC = () => {
         healCharacter(cost);
     };
 
+    const handleFreeHeal = () => {
+        if (character.currentHp >= stats.maxHp) {
+            addLog("Jesteś już w pełni zdrowy.");
+            return;
+        }
+        updateHp(stats.maxHp);
+        addLog("Uleczono za darmo! (Tymczasowa opcja)");
+    };
+
     const handlePotion = (size: 'small' | 'medium' | 'large') => {
         let cost = 0;
         let label = "";
@@ -161,13 +170,22 @@ export const DoctorScreen: React.FC = () => {
                     <div>
                         <h3 className="text-blue-100 font-bold text-lg">Gabinet Lekarski</h3>
                     </div>
-                    <button 
-                        onClick={handleHealFull}
-                        className="px-3 py-1 bg-green-800 hover:bg-green-700 text-white text-xs font-bold rounded border border-green-600 flex items-center gap-2"
-                    >
-                        <Heart size={14} fill="currentColor" />
-                        Ulecz (100 <Coins size={10} className="inline"/>)
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={handleFreeHeal}
+                            className="px-3 py-1 bg-blue-800 hover:bg-blue-700 text-white text-xs font-bold rounded border border-blue-600 flex items-center gap-2"
+                        >
+                            <Heart size={14} fill="currentColor" />
+                            Ulecz (Darmo)
+                        </button>
+                        <button 
+                            onClick={handleHealFull}
+                            className="px-3 py-1 bg-green-800 hover:bg-green-700 text-white text-xs font-bold rounded border border-green-600 flex items-center gap-2"
+                        >
+                            <Heart size={14} fill="currentColor" />
+                            Ulecz (100 <Coins size={10} className="inline"/>)
+                        </button>
+                    </div>
                 </div>
 
                 {/* Services Grid Container (Reduced Size) */}

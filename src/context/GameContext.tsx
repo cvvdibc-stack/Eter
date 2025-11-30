@@ -3,10 +3,10 @@ import { Character, Profession, Item, ItemType, CombatLog, BonusType, Monster, M
 import { PROFESSIONS } from '../data/professions';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
-import { XP_TO_NEXT_LEVEL, calculateDerivedStats } from '../utils/formulas';
+import { XP_TO_NEXT_LEVEL, calculateDerivedStats, calculateMaxTrainableStat, getStatsForLevel } from '../utils/formulas';
 import { generateItem } from '../utils/itemGenerator';
 
-type GameView = 'AUTH' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING';
+type GameView = 'AUTH' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING' | 'TRAINER';
 
 interface GameState {
   user: User | null;
@@ -71,6 +71,9 @@ interface GameContextType extends GameState {
   cancelMarketListing: (listingId: string) => Promise<void>;
   
   moveItem: (fromIndex: number, toIndex: number) => void;
+
+  loadRanking: () => Promise<any[]>;
+  trainStat: (stat: 'strength' | 'dexterity' | 'vitality' | 'intelligence') => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -119,13 +122,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 damageMin: m.stats.damageMin,
                 damageMax: m.stats.damageMax,
                 defense: m.stats.defense,
-                attackSpeed: m.stats.attackSpeed,
+                // Balanced SA: Normal = Lvl*2.5, Boss = Lvl*4
+                attackSpeed: Math.floor(m.level * (m.type === 'boss' ? 4.0 : 2.5)),
                 expReward: m.rewards.exp,
                 goldReward: Math.floor((m.rewards.goldMin + m.rewards.goldMax) / 2),
                 goldMin: m.rewards.goldMin,
                 goldMax: m.rewards.goldMax,
                 lootTable: m.loot_table,
-                mechanics: m.mechanics
+                mechanics: m.mechanics,
+                // Add expMultiplier if it exists in lootTable or root (Plan said loot table)
+                // But m.loot_table is passed as lootTable.
             }));
             setMonsters(mappedMonsters);
         }
@@ -142,34 +148,35 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchData();
   }, []);
 
-  // SELF-HEALING MECHANISM FOR UNLOCKS
+  // LEVEL-BASED UNLOCKS (Fixes 13, 18, 25, 26 bugs)
   useEffect(() => {
-      if (monsters.length > 0 && unlockedMonsters.length > 0) {
-          let needsUpdate = false;
-          const newUnlocked = [...unlockedMonsters];
-
-          // Iterate through monsters
-          for (let i = 0; i < monsters.length - 1; i++) {
-              const currentMonster = monsters[i];
-              const nextMonster = monsters[i+1];
-
-              // If we have killed the current monster at least once
-              if (killedMonsters[currentMonster.id] > 0) {
-                  // And the next monster is NOT unlocked
-                  if (!newUnlocked.includes(nextMonster.id)) {
-                      console.log(`Auto-unlocking ${nextMonster.id} because ${currentMonster.id} was killed.`);
-                      newUnlocked.push(nextMonster.id);
-                      needsUpdate = true;
-                  }
+      if (character && monsters.length > 0) {
+          const level = character.level;
+          // Unlock monsters up to Player Level + 2
+          const shouldBeUnlocked = monsters
+              .filter(m => m.level <= level + 2 && !m.id.startsWith('boss_dungeon'))
+              .map(m => m.id);
+          
+          const current = new Set(unlockedMonsters);
+          let changed = false;
+          shouldBeUnlocked.forEach(id => {
+              if (!current.has(id)) {
+                  current.add(id);
+                  changed = true;
               }
+          });
+          
+          // Ensure Monster 1 is always unlocked
+          if (!current.has('monster_1')) {
+              current.add('monster_1');
+              changed = true;
           }
 
-          if (needsUpdate) {
-              setUnlockedMonsters(newUnlocked);
-              addLog("System: Zaktualizowano postęp wypraw (Naprawa).");
+          if (changed) {
+              setUnlockedMonsters(Array.from(current));
           }
       }
-  }, [monsters, killedMonsters]);
+  }, [character?.level, monsters, unlockedMonsters]);
 
   // HP Regeneration Loop
   useEffect(() => {
@@ -354,24 +361,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data, error } = await supabase
         .from('characters')
-        .select('*')
+        .select('*, player_stats(*)')
         .eq('user_id', userId);
     
     if (data) {
         const mappedChars = data.map((d: any) => {
-            // Calculate derived maxHp for initialization if currentHp missing
-            const baseStats = d.stats || { strength: 0, dexterity: 0, intelligence: 0, vitality: 0 };
-            const maxHp = 50 + (baseStats.vitality * 6); // Rough estimate
+            // Recalculate Base Stats based on Level (Fix for stuck stats)
+            // Use stored stats if level 1, otherwise calculate
+            // Actually always calculate to ensure consistency with growth table?
+            // Or should we respect DB stats if they diverged?
+            // Given the bug, we should Enforce Formula Stats.
+            const calculatedBaseStats = getStatsForLevel(d.profession, d.level);
+            
+            // Derived maxHp
+            const maxHp = 50 + (calculatedBaseStats.vitality * 6); 
 
             // Pad inventory to 48 slots
             const rawInventory = d.inventory || [];
             const inventory = [...rawInventory];
             while (inventory.length < 48) inventory.push(null);
 
+            // Handle Bought Stats
+            const boughtStats = d.player_stats || { strength_bonus: 0, dexterity_bonus: 0, intelligence_bonus: 0, vitality_bonus: 0 };
+
             return {
                 ...d,
+                boughtStats,
                 maxExp: d.max_exp || XP_TO_NEXT_LEVEL(d.level),
-                baseStats,
+                baseStats: calculatedBaseStats, // Use calculated stats
                 equipment: typeof d.equipment === 'string' ? JSON.parse(d.equipment) : (d.equipment || {
                     weapon: null, helmet: null, armor: null, 
                     boots: null, gloves: null, amulet: null, ring: null
@@ -383,7 +400,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 unlocked_bonuses: d.unlocked_bonuses || {},
                 dungeon_progress: d.dungeon_progress || {},
                 kill_stats: d.kill_stats || {},
-                currentHp: d.current_hp !== undefined ? d.current_hp : maxHp, // Default to max roughly
+                currentHp: d.current_hp !== undefined ? d.current_hp : maxHp, 
                 lastRegenTime: d.last_regen_time || Date.now()
             };
         });
@@ -514,7 +531,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       newMaxExp = XP_TO_NEXT_LEVEL(newLevel); 
       addLog(`Awansowałeś na poziom ${newLevel}!`);
     }
-    setCharacter(prev => prev ? { ...prev, level: newLevel, exp: newExp, maxExp: newMaxExp } : null);
+    
+    // Recalculate Base Stats for new level
+    const newBaseStats = getStatsForLevel(character.profession, newLevel);
+    
+    setCharacter(prev => prev ? { ...prev, level: newLevel, exp: newExp, maxExp: newMaxExp, baseStats: newBaseStats } : null);
   };
 
   const gainGold = (amount: number) => {
@@ -625,7 +646,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           character.level, 
           character.profession, 
           character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-          character.activeTalismans || []
+          character.activeTalismans || [],
+          character.boughtStats
       );
       
       if (character.currentHp <= stats.maxHp * 0.1) {
@@ -649,7 +671,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           character.level, 
           character.profession, 
           character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-          character.activeTalismans || []
+          character.activeTalismans || [],
+          character.boughtStats
       );
       
       if (character.currentHp <= stats.maxHp * 0.1) {
@@ -760,20 +783,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshMerchant = () => {
       if (!character) return;
-      // Generate 12-16 items (Increased from 8-12)
+      // Generate 12-16 items
       const count = Math.floor(Math.random() * 5) + 12; 
       const items: Item[] = [];
       
       for (let i = 0; i < count; i++) {
-          // Mostly common/unique, rare heroic
+          // Only Common / Unique
           const roll = Math.random();
-          let rarity: 'common' | 'unique' | 'heroic' = 'common';
-          if (roll > 0.90) rarity = 'heroic';
-          else if (roll > 0.60) rarity = 'unique';
+          let rarity: 'common' | 'unique' = 'common';
+          if (roll > 0.85) rarity = 'unique';
           
           // Level approx player level +/- 2
           const level = Math.max(1, character.level + Math.floor(Math.random() * 5) - 2);
-          items.push(generateItem(level, character.profession, rarity));
+          // Shop Multiplier 0.6
+          items.push(generateItem(level, character.profession, rarity, undefined, 0.6));
       }
       setMerchantInventory(items);
   };
@@ -833,7 +856,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           character.level, 
           character.profession, 
           character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-          character.activeTalismans || []
+          character.activeTalismans || [],
+          character.boughtStats
       );
       
       const validHp = Math.max(0, Math.min(newHp, stats.maxHp));
@@ -853,7 +877,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           character.level, 
           character.profession, 
           character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-          character.activeTalismans || []
+          character.activeTalismans || [],
+          character.boughtStats
       );
 
       setCharacter(prev => prev ? { 
@@ -1037,6 +1062,77 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCharacter(prev => prev ? { ...prev, inventory: newInventory } : null);
   };
 
+  const loadRanking = async () => {
+      const { data, error } = await supabase
+          .from('characters')
+          .select('id, name, level, exp, gold, profession')
+          .order('level', { ascending: false })
+          .order('exp', { ascending: false })
+          .limit(100);
+      if (error) {
+          console.error(error);
+          return [];
+      }
+      return data || [];
+  };
+
+  const trainStat = async (stat: 'strength' | 'dexterity' | 'vitality' | 'intelligence') => {
+      if (!character || !user) return;
+      const currentBonus = (character.boughtStats as any)?.[`${stat}_bonus`] || 0;
+      
+      // New Limit Logic
+      const baseStat = character.baseStats[stat];
+      const currentTotal = baseStat + currentBonus;
+      const maxStat = calculateMaxTrainableStat(baseStat, character.level);
+
+      if (currentTotal >= maxStat) {
+          addLog(`Osiągnięto maksymalny poziom treningu dla tej statystyki! (${maxStat})`);
+          showToast(`Limit treningu osiągnięty! Awansuj, aby zwiększyć limit.`, 'info');
+          return;
+      }
+      
+      const cost = Math.floor(10 * Math.pow(currentBonus, 2));
+      if (currentBonus === 0 && cost === 0) {
+          // Edge case if bonus is 0, cost is 0? Formula says 10 * 0^2 = 0.
+          // Previous logic had "if (bonus === 0) cost = 50". 
+          // Let's check previous code... 
+          // Wait, the previous code had `const cost = Math.floor(10 * Math.pow(currentBonus, 2));` 
+          // And `if (currentBonus === 0) cost = 50;` was in TrainerScreen, not here? 
+          // No, it was in GameContext too. Let's add base cost for 0.
+      }
+      
+      let finalCost = cost;
+      if (currentBonus === 0) finalCost = 50;
+
+      if (character.gold < finalCost) {
+          addLog(`Koszt treningu: ${finalCost} złota. Nie stać Cię!`);
+          return;
+      }
+      
+      // Pay
+      const newGold = character.gold - finalCost;
+      const newBonus = currentBonus + 1;
+      
+      // Update Local
+      const newBoughtStats = { ...character.boughtStats, [`${stat}_bonus`]: newBonus };
+      
+      setCharacter(prev => prev ? { ...prev, gold: newGold, boughtStats: newBoughtStats } : null);
+      
+      addLog(`Wytrenowano ${stat} (+1). Koszt: ${finalCost}`);
+      
+      // Update DB
+      if (user.id !== 'demo-user') {
+          const { error } = await supabase.from('player_stats').upsert({
+              character_id: character.id,
+              strength_bonus: newBoughtStats.strength_bonus,
+              dexterity_bonus: newBoughtStats.dexterity_bonus,
+              vitality_bonus: newBoughtStats.vitality_bonus,
+              intelligence_bonus: newBoughtStats.intelligence_bonus
+          });
+          if (error) console.error("Stat update error", error);
+      }
+  };
+
   return (
     <GameContext.Provider value={{
       user,
@@ -1092,7 +1188,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyMarketListing,
       cancelMarketListing,
       moveItem,
-      showToast
+      showToast,
+      loadRanking,
+      trainStat
     }}>
       {children}
     </GameContext.Provider>

@@ -191,7 +191,8 @@ export const generateItem = (
     level: number,
     profession: Profession,
     rarity: ItemRarity = 'common',
-    forcedType?: ItemType
+    forcedType?: ItemType,
+    statsMultiplier: number = 1.0 // NEW argument for Shop scaling
 ): Item => {
     /* ----------------- 1. SELECT TYPE ----------------- */
     const possibleTypes: ItemType[] = ['weapon', 'helmet', 'armor', 'boots', 'ring', 'amulet', 'gloves'];
@@ -307,7 +308,7 @@ export const generateItem = (
 
     /* ----------------- 5. CALCULATE VALUES ---------------- */
     const stats: ItemStats = {};
-    const multiplier = RARITY_MULTIPLIER[rarity];
+    const multiplier = RARITY_MULTIPLIER[rarity] * statsMultiplier; // Apply Shop Multiplier
 
     const applyStat = (stat: keyof ItemStats, isImplicit: boolean) => {
         let range;
@@ -486,15 +487,20 @@ export const generateItem = (
     }
 
     /* ----------------- RETURN FINAL ITEM --------------------- */
+    // Value Calculation: Quadratic scaling with level to ensure high-level items are much more expensive
+    // Formula: (Level * 10 + Level^2) * Multiplier
+    const baseValue = (level * 10) + Math.pow(level, 2); 
+    const value = Math.floor(baseValue * multiplier);
+
     return {
         id: Math.random().toString(36).substr(2, 9),
         name: finalName,
         type,
         rarity,
         stats,
-        value: Math.floor(level * 10 * multiplier),
+        value: Math.max(10, value), // Ensure at least 10 gold
         levelReq: level,
-        classReq: profession,
+        classReq: profession, // Set Class Requirement
         icon: 'default',
         upgradeLevel: 0
     };

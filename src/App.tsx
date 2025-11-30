@@ -15,6 +15,7 @@ import { GameLayout } from './components/layout/GameLayout';
 import { AuthScreen } from './components/AuthScreen';
 import { CharacterSelection } from './components/CharacterSelection';
 import { RankingScreen } from './components/RankingScreen';
+import { TrainerScreen } from './components/TrainerScreen';
 
 const GameContent: React.FC = () => {
   const { view, user } = useGame();
@@ -73,6 +74,8 @@ const GameContent: React.FC = () => {
               return <CombatHistoryScreen />;
            case 'RANKING':
               return <RankingScreen />;
+           case 'TRAINER':
+              return <TrainerScreen />;
           default:
             return <InventoryScreen />;
         }

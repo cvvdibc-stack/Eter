@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
-import { Trophy, Sword, Skull, Archive, Coins, Crown, Shield, User } from 'lucide-react';
-import { Profession, Character, Item, ItemStats } from '../types';
+import { Trophy, Skull, Coins, User } from 'lucide-react';
+import { Profession, Item } from '../types';
 import { getAvatarSrc } from '../utils/assets';
 import { ItemTooltip } from './ItemTooltip';
 
@@ -13,120 +13,62 @@ interface RankingEntry {
     name: string;
     profession: Profession;
     level: number;
-    value: number; // Main sorting value (Level, Power Score, Kills, Items, Gold)
-    subValue?: string | number; // Extra info (Exp, DPS, Time, %)
+    value: number; // Main sorting value
+    subValue?: string | number;
     rank: number;
     weapon?: Item | null; // For tooltip
     avatar?: string;
 }
 
-// --- Helper: Calculate Power Score ---
-const calculatePowerScore = (char: Character): number => {
-    const stats = char.baseStats; // Note: Should use derived total stats ideally, but using base + items approximation for now
-    
-    // Simplified Power Score Formula
-    let score = 0;
-    
-    // 1. Attributes
-    score += (stats.strength + stats.dexterity + stats.intelligence + stats.vitality) * 2;
-    
-    // 2. HP
-    score += Math.floor(char.currentHp / 5); // Approximation using currentHp (should use maxHp)
-    
-    // 3. Equipment Value & Quality
-    if (char.equipment) {
-        Object.values(char.equipment).forEach((item: any) => {
-            if (item) {
-                score += item.value / 10; // Gold value proxy
-                
-                // Rarity Bonus
-                if (item.rarity === 'unique') score += 50;
-                if (item.rarity === 'heroic') score += 150;
-                if (item.rarity === 'legendary') score += 500;
-                if (item.rarity === 'mythic') score += 1500;
-            }
-        });
-    }
-
-    return Math.floor(score);
-};
-
-// --- MOCK DATA GENERATOR ---
-const generateMockRankings = (category: RankingCategory, playerChar: Character): RankingEntry[] => {
-    const list: RankingEntry[] = [];
-    const names = ["Azog", "Kaelthas", "Jaina", "Thrall", "Arthas", "Sylvanas", "Illidan", "Tyrande", "Malfurion", "Rexxar"];
-    
-    // 1. Player Entry (Always #1 for Demo)
-    let val = 0;
-    let sub: any = 0;
-    
-    if (category === 'LEVEL') { val = playerChar.level; sub = `${playerChar.exp} XP`; }
-    if (category === 'BOSS') { val = Object.values(playerChar.kill_stats || {}).reduce((a,b) => a+b, 0); sub = "Zabójstw"; }
-    if (category === 'ECONOMY') { val = playerChar.gold; sub = "Złota"; }
-
-    list.push({
-        id: playerChar.id,
-        name: playerChar.name,
-        profession: playerChar.profession,
-        level: playerChar.level,
-        value: val,
-        subValue: sub,
-        rank: 1,
-        weapon: playerChar.equipment?.weapon || null
-    });
-
-    // 2. Mock Entries (Ranks 2-6)
-    for (let i = 0; i < 5; i++) {
-        const profs: Profession[] = ['warrior', 'mage', 'assassin', 'cleric'];
-        const p = profs[Math.floor(Math.random() * profs.length)];
-        
-        let mVal = 0;
-        let mSub: any = "";
-
-        switch (category) {
-            case 'LEVEL':
-                mVal = Math.max(1, playerChar.level - Math.floor(Math.random() * 3) - 1);
-                mSub = `0 XP`;
-                break;
-            case 'BOSS':
-                mVal = Math.max(0, val - Math.floor(Math.random() * 10) - 1);
-                mSub = "Zabójstw";
-                break;
-            case 'ECONOMY':
-                mVal = Math.max(0, playerChar.gold - Math.floor(Math.random() * 500) - 100);
-                mSub = "Złota";
-                break;
-        }
-
-        list.push({
-            id: `mock-${i}`,
-            name: names[i % names.length],
-            profession: p,
-            level: Math.max(1, playerChar.level - Math.floor(Math.random() * 5)),
-            value: mVal,
-            subValue: mSub,
-            rank: i + 2,
-            weapon: null
-        });
-    }
-
-    return list;
-};
-
 // --- COMPONENT ---
 export const RankingScreen: React.FC = () => {
-    const { character } = useGame();
+    const { character, loadRanking } = useGame();
     const [activeTab, setActiveTab] = useState<RankingCategory>('LEVEL');
     const [data, setData] = useState<RankingEntry[]>([]);
     const [hoveredItem, setHoveredItem] = useState<{ item: Item, rect: DOMRect } | null>(null);
 
     useEffect(() => {
-        if (character) {
-            // In real app, fetch from DB here
-            const rankings = generateMockRankings(activeTab, character);
-            setData(rankings);
-        }
-    }, [activeTab, character]);
+        const fetchRanking = async () => {
+            const result = await loadRanking();
+            
+            // Sort based on active tab (Client side sort of top 100 levels)
+            // Ideally should query DB with sort, but context only provides one loadRanking currently.
+            let sorted = [...result];
+            
+            if (activeTab === 'ECONOMY') {
+                sorted.sort((a, b) => b.gold - a.gold);
+            } else if (activeTab === 'LEVEL') {
+                // Already sorted by DB usually
+            }
+            
+            const formatted: RankingEntry[] = sorted.map((r, idx) => {
+                let val = r.level;
+                let sub: any = `${r.exp} XP`;
+                
+                if (activeTab === 'ECONOMY') {
+                    val = r.gold;
+                    sub = "Złota";
+                }
+                
+                return {
+                    id: r.id,
+                    name: r.name,
+                    profession: r.profession,
+                    level: r.level,
+                    value: val,
+                    subValue: sub,
+                    rank: idx + 1,
+                    weapon: null // Weapon info not fetched
+                };
+            });
+            
+            setData(formatted);
+        };
+
+        fetchRanking();
+        const interval = setInterval(fetchRanking, 60000); // 60s Refresh
+        return () => clearInterval(interval);
+    }, [activeTab, loadRanking]);
 
     if (!character) return null;
 
@@ -238,7 +180,7 @@ export const RankingScreen: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-slate-100">Rankingi Globalne</h2>
-                            <p className="text-xs text-slate-500">Sezon 1 • Koniec za 24 dni</p>
+                            <p className="text-xs text-slate-500">Odświeżanie co 60s</p>
                         </div>
                     </div>
                     {character.id === 'demo-user' && (

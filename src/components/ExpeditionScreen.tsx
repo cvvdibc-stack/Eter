@@ -154,7 +154,9 @@ export const ExpeditionScreen: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-1">
                             <Sparkles size={10} className="text-blue-400" />
-                            <span className="text-blue-400">{monster.expReward} XP</span>
+                            <span className="text-blue-400">
+                                {Math.floor(monster.expReward * 0.9)}–{Math.floor(monster.expReward * 1.1)} XP
+                            </span>
                         </div>
                    </div>
                )}
@@ -175,8 +177,11 @@ export const ExpeditionScreen: React.FC = () => {
                         }}
                       />
                   ) : (
-                      <div className="w-full h-full bg-black/80 flex items-center justify-center">
+                      <div className="w-full h-full bg-black/80 flex flex-col items-center justify-center gap-2">
                            <Lock size={48} className="text-slate-700 z-10" />
+                           <span className="text-xs font-bold text-red-900 uppercase tracking-widest bg-black/50 px-2 py-1 rounded border border-red-900/30">
+                               Wymagany Lvl {Math.max(1, monster.level - 2)}
+                           </span>
                       </div>
                   )}
                   

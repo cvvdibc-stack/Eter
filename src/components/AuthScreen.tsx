@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { Sword, Shield, Scroll } from 'lucide-react';
 
@@ -7,13 +7,32 @@ export const AuthScreen: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+      const savedEmail = localStorage.getItem('remember_email');
+      const savedPass = localStorage.getItem('remember_pass');
+      if (savedEmail) {
+          setEmail(savedEmail);
+          setRememberMe(true);
+      }
+      if (savedPass) setPassword(savedPass);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     
     if (isLogin) {
+      if (rememberMe) {
+          localStorage.setItem('remember_email', email);
+          localStorage.setItem('remember_pass', password);
+      } else {
+          localStorage.removeItem('remember_email');
+          localStorage.removeItem('remember_pass');
+      }
+
       const { error } = await signIn(email, password);
       if (error) setError(error.message);
     } else {
@@ -71,6 +90,19 @@ export const AuthScreen: React.FC = () => {
               placeholder="••••••••"
             />
           </div>
+
+          {isLogin && (
+              <div className="flex items-center gap-2">
+                  <input 
+                      type="checkbox" 
+                      id="remember" 
+                      checked={rememberMe}
+                      onChange={e => setRememberMe(e.target.checked)}
+                      className="rounded border-slate-700 bg-[#0a0a0a] text-amber-600 focus:ring-amber-600"
+                  />
+                  <label htmlFor="remember" className="text-slate-400 text-xs cursor-pointer select-none">Zapamiętaj mnie</label>
+              </div>
+          )}
 
           <button 
             disabled={isLoading}

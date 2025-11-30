@@ -8,27 +8,41 @@ export const generateLoot = (level: number, profession: Profession, lootTable?: 
       return generateItem(level, profession, 'common');
   }
 
+  // 0. Determine Target Profession (Random / Equal Chance)
+  // Users requested equal drop rates for all classes to encourage trading/market.
+  const allProfs: Profession[] = ['warrior', 'assassin', 'mage', 'cleric'];
+  const targetProfession = allProfs[Math.floor(Math.random() * allProfs.length)];
+
   // 1. Level Gating
   const allowedRarities = ['common'];
-  if (level >= lootTable.level_gate.unique) allowedRarities.push('unique');
-  if (level >= lootTable.level_gate.heroic) allowedRarities.push('heroic');
-  if (level >= lootTable.level_gate.legendary) allowedRarities.push('legendary');
-  if (level >= lootTable.level_gate.tytanic) allowedRarities.push('tytanic');
+  // Check if level_gate exists (it might be missing on older data or partial updates)
+  if (lootTable.level_gate) {
+      if (level >= lootTable.level_gate.unique) allowedRarities.push('unique');
+      if (level >= lootTable.level_gate.heroic) allowedRarities.push('heroic');
+      if (level >= lootTable.level_gate.legendary) allowedRarities.push('legendary');
+      if (level >= lootTable.level_gate.tytanic) allowedRarities.push('tytanic');
+  } else {
+      // Fallback if no level_gate defined
+      allowedRarities.push('unique');
+  }
 
   // 2. Rarity Roll (Sequential)
   const rand = Math.random() * 100;
   let rarity: ItemRarity = 'common';
 
-  if (allowedRarities.includes('tytanic') && lootTable.rarity.tytanic > 0 && rand < lootTable.rarity.tytanic) {
+  // Safety check for rarity table presence
+  const rarities = lootTable.rarity || { common: 100, unique: 0, heroic: 0, legendary: 0, tytanic: 0 };
+
+  if (allowedRarities.includes('tytanic') && rarities.tytanic > 0 && rand < rarities.tytanic) {
       rarity = 'mythic';
   }
-  else if (allowedRarities.includes('legendary') && rand < (lootTable.rarity.tytanic + lootTable.rarity.legendary)) {
+  else if (allowedRarities.includes('legendary') && rand < (rarities.tytanic + rarities.legendary)) {
       rarity = 'legendary';
   }
-  else if (allowedRarities.includes('heroic') && rand < (lootTable.rarity.tytanic + lootTable.rarity.legendary + lootTable.rarity.heroic)) {
+  else if (allowedRarities.includes('heroic') && rand < (rarities.tytanic + rarities.legendary + rarities.heroic)) {
       rarity = 'heroic';
   }
-  else if (allowedRarities.includes('unique') && rand < (lootTable.rarity.tytanic + lootTable.rarity.legendary + lootTable.rarity.heroic + lootTable.rarity.unique)) {
+  else if (allowedRarities.includes('unique') && rand < (rarities.tytanic + rarities.legendary + rarities.heroic + rarities.unique)) {
       rarity = 'unique';
   }
   else {
@@ -36,42 +50,55 @@ export const generateLoot = (level: number, profession: Profession, lootTable?: 
   }
 
   // 3. Item Selection
-  // If Legendary/Mythic, we prefer using the predefined Templates for Name/Icon,
-  // BUT we MUST regenerate stats to ensure consistency with the new generator rules (caps, bonuses count, etc.)
+  // If Legendary/Mythic, we prefer using the predefined Templates for Name/Icon
   if (rarity === 'legendary' || rarity === 'mythic') {
-      // Previously picked randomClass. Now enforcing PLAYER PROFESSION
-      // "Czy jest gdzies wzmianka o tym, że mogę dropnąć tylko itemy na swoją profesje?"
-      // YES, we enforce it now.
-      
       let itemId: string | null = null;
 
       if (rarity === 'legendary') {
-          itemId = lootTable.legends[profession];
+          itemId = lootTable.legends[targetProfession]; // Use targetProfession
       } else {
           // Mythic / Tytanic
           if (lootTable.tytanic) {
-              itemId = lootTable.tytanic[profession];
+              itemId = lootTable.tytanic[targetProfession]; // Use targetProfession
           }
       }
 
       if (itemId && itemTemplates.length > 0) {
           const template = itemTemplates.find(i => i.id === itemId);
           if (template) {
-              // RE-GENERATE STATS based on the template's type and intended class (which is profession)
-              const generated = generateItem(level, profession, rarity, template.type);
+              // RE-GENERATE STATS based on the template's type and intended class
+              const generated = generateItem(level, targetProfession, rarity, template.type);
+              
+              // Calculate Value correctly for template-based items
+              // value = rarityMultiplier (handled in generateItem) * 20 * levelReq
+              // generateItem already handles value calculation now. 
+              // We just need to ensure we keep the template name/icon but use generated stats (as per original logic to keep balance dynamic)
+              // Or should we use template stats?
+              // "Generator często daje itemy za mocne -> Balans robi się niemożliwy"
+              // "Itemy z bazy (legend/tytan) nie mają classReq" -> "Naprawa: Itemy z loot generatora mają: classReq: profession"
+              // If we use template stats, they are fixed JSON. If we regenerate, we use generator logic.
+              // The plan says: "Itemy z bazy (legend/tytan) nie mają classReq ... Dodać kolumnę... i przy seedowaniu ustawiać poprawną klasę."
+              // It doesn't explicitly say "Don't use generator stats". But "Generator często daje itemy za mocne" suggests maybe we SHOULD use fixed stats?
+              // However, fixed stats don't scale with level.
+              // "Dla szablonów z bazy: value = rarityMultiplier * 20 * (levelReq)" -> Suggests we use template properties.
+              
+              // Let's stick to: Use Generator for stats to ensure scaling, but use Template Name/Icon/ID.
+              // AND ensure classReq is set.
               
               return {
                   ...generated,
                   name: template.name,
                   icon: template.icon || generated.icon,
-                  id: Math.random().toString(36).substr(2, 9)
+                  id: Math.random().toString(36).substr(2, 9),
+                  classReq: targetProfession, // Enforce
+                  value: generated.value // Generator value is now correct
               };
           }
       }
   }
 
   // Common / Unique / Heroic OR Fallback
-  return generateItem(level, profession, rarity);
+  return generateItem(level, targetProfession, rarity);
 };
 
 export const generateTalismanLoot = (level: number): string | null => {

@@ -1,103 +1,103 @@
-# Podsumowanie Projektu: Cienie Eteru
+# Podsumowanie Gry RPG (Dokumentacja Projektu)
 
-## 1. Główne Mechaniki Gry
+## 1. Przegląd Ogólny
+Gra to przeglądarkowa gra RPG typu "dungeon crawler" / "idle clicker" (z elementami aktywnymi), osadzona w świecie fantasy. Gracze tworzą postacie, walczą z potworami, zdobywają ekwipunek i rywalizują w rankingach. Gra kładzie duży nacisk na rozwój statystyk, optymalizację ekwipunku (buildy) i progresję przez kolejne poziomy wypraw i lochów.
 
-### System Postaci
-*   **Profesje:** Wojownik, Zabójca, Mag, Kleryk. Każda z unikalnymi statystykami bazowymi i skalowaniem.
-*   **Statystyki:** Siła, Zręczność, Inteligencja, Witalność.
-*   **Statystyki Pochodne:** HP, Pancerz, Unik, Krytyk, Obrażenia Fiz/Mag, Odporności, Blok, Moc Leczenia.
-*   **Nowe Statystyki (v2):** Szybkość Ataku (SA), Inicjatywa, Stabilność, Przebicie Pancerza/Odporności, Obrażenia Krytyczne, Regeneracja HP, Mana Shield i wiele innych.
-*   **Progresja:** 
-    *   Doświadczenie (EXP) ze skalowaniem wymaganym na poziom (`55 * L^2 + 110 * L`).
-    *   System kar/nagród EXP za różnicę poziomów.
-    *   Regeneracja HP: Pasywna (2% + bonusy co minutę) oraz aktywna (Medyk, Mikstury).
+## 2. Klasy Postaci (Profesje)
+W grze dostępne są 4 unikalne klasy, każda z własną specyfiką i "dozwolonymi" statystykami na przedmiotach:
 
-### System Walki
-*   **Turowy:** Klasyczna walka turowa z logami.
-*   **Szybka Walka:** Natychmiastowa symulacja walki dla szybszego grindu.
-*   **Inicjatywa:** Oparta na Szybkości Ataku (SA).
-*   **Mechaniki:** Uniki, Krytyki, Bloki, DoT (Podpalenie, Trucizna).
-*   **Historia Walk:** Zapisywanie ostatnich 50 walk w bazie danych.
+### Wojownik (Warrior)
+*   **Rola:** Tank / Physical DPS
+*   **Główna statystyka:** Siła (Obrażenia + Pancerz)
+*   **Unikalne mechaniki:**
+    *   *Block Chance / Value:* Szansa na zablokowanie i redukcję obrażeń.
+    *   *First Hit Shield:* Często posiada tarczę na start walki.
+*   **Dozwolone statystyki:** Siła, Witalność, Pancerz, Blok.
 
-### Ekonomia
-*   **Złoto:** Zdobywane z potworów (wzór zależny od poziomu + RNG) i sprzedaży przedmiotów.
-*   **Rubiny:** Waluta premium (startowa ilość, ikona Gem).
-*   **Handel:**
-    *   **Sklep:** Kupno/Sprzedaż przedmiotów.
-    *   **Ceny:** Dynamiczne mnożniki zależne od rzadkości (od x1.0 do x15.0).
-    *   **Odświeżanie:** Możliwość resetu oferty za Rubiny.
+### Zabójca (Assassin)
+*   **Rola:** Burst DPS / Evasion
+*   **Główna statystyka:** Zręczność (Obrażenia + Krytyk + Unik + SA)
+*   **Unikalne mechaniki:**
+    *   *Poison:* Szansa na zatrucie (obrażenia w czasie).
+    *   *Blood Fury:* Zwiększenie obrażeń w trakcie walki (mechanika legendarna).
+    *   *Highest SA:* Najszybszy bazowy atak.
+*   **Dozwolone statystyki:** Zręczność, Krytyk, Unik, Przebicie Pancerza.
 
-## 2. System Przedmiotów (Generator Itemów)
+### Mag (Mage)
+*   **Rola:** Magic DPS / Glass Cannon
+*   **Główna statystyka:** Inteligencja (Obrażenia Magiczne + Odporność)
+*   **Unikalne mechaniki:**
+    *   *Burn:* Podpalenie przeciwnika.
+    *   *Mana Shield:* Obrażenia pochłaniane przez manę (statystyka defensywna).
+    *   *Overload:* Szansa na podwójne obrażenia (mechanika legendarna).
+*   **Dozwolone statystyki:** Inteligencja, Moc Magiczna, Przebicie Magiczne.
 
-### Generowanie (`itemGenerator.ts`)
-*   **Proceduralne:** Przedmioty zwykłe, unikatowe i heroiczne są generowane losowo w oparciu o poziom gracza i profesję.
-*   **Szablony:** Przedmioty Legendarne i Tytaniczne są pobierane z bazy danych (predefiniowane szablony) dla unikalności.
-*   **Rzadkości:**
-    *   **Pospolity (Szary):** 2 statystyki, x1.0 ceny.
-    *   **Unikat (Zielony):** 3 statystyki, x1.6 ceny.
-    *   **Heroiczny (Niebieski):** 4 statystyki, x2.8 ceny.
-    *   **Legendarny (Pomarańczowy):** 6 statystyk, x6.0 ceny, unikalne bonusy.
-    *   **Mityczny/Tytaniczny (Czerwony):** 8 statystyk, x15.0 ceny, potężne efekty.
-*   **Logika:**
-    *   Przedmioty zawsze pasują do klasy (np. Mag nie dostanie miecza z Siłą).
-    *   Inteligentne dobieranie statystyk (Matryca Klas).
-    *   Ograniczenia poziomu (Level Gate) dla dropu wyższych rzadkości.
+### Kleryk (Cleric)
+*   **Rola:** Healer / Sustain Tank
+*   **Główna statystyka:** Inteligencja (ale skaluje też Pancerz i Leczenie)
+*   **Unikalne mechaniki:**
+    *   *Healing Power:* Zwiększa efektywność leczenia.
+    *   *Sanctified Aura:* Pasywne bonusy lub debuffy dla wroga.
+    *   *Sustain:* Wysoka regeneracja i redukcja obrażeń.
 
-### Grafika Przedmiotów (`ItemIcon.tsx`)
-*   **Generator Grafik (Komponent):** Zamiast statycznych plików PNG, gra wykorzystuje dynamiczny generator oparty na kodzie:
-    *   **Tło:** Gradienty kolorystyczne odpowiadające rzadkości.
-    *   **Ikona:** Wektorowe ikony (Lucide React) reprezentujące typ przedmiotu (Miecz, Zbroja, Buty itd.).
-    *   **Efekty:** Poświata (Glow) i animacje dla przedmiotów Legendarnych i Mitycznych.
-*   **Zalety:** Lekkość, natychmiastowe ładowanie, nieskończona ilość kombinacji kolorystycznych, spójny styl UI.
+## 3. System Walki
+Walka odbywa się w systemie turowym lub "Szybkiej Walki" (symulacja).
+*   **Inicjatywa (SA - Szybkość Ataku):** Decyduje o tym, kto atakuje częściej. Gracz z 2x większym SA zaatakuje 2 razy zanim wróg wykona ruch.
+*   **Obrażenia:**
+    *   Fizyczne (redukowane przez Pancerz).
+    *   Magiczne (redukowane przez Odporność Magiczną).
+    *   Czyste/Nieuchronne (Piercing) - ignorują obronę.
+*   **Mechaniki Defensywne:**
+    *   Unik (całkowite uniknięcie ciosu).
+    *   Blok (redukcja obrażeń o wartość bloku).
+    *   Pancerz/Odporność (procentowa redukcja, max 75%).
+*   **Leczenie:** Możliwość leczenia po walce za złoto (Skaluje się z poziomem: `Level * 5 gold`).
 
-## 3. Świat Gry
+## 4. Ekonomia i Progresja
+*   **Złoto (Gold):** Podstawowa waluta. Zdobywana z potworów i sprzedaży przedmiotów.
+    *   *Skalowanie Dropu:* `(Level * 1.2) * 1.2` (dla potworów).
+    *   *Wartość Przedmiotów:* `((Level * 10) + Level^2) * Mnożnik Jakości`.
+*   **Statystyki za Złoto (Trener):**
+    *   Gracz może kupować stałe bonusy do statystyk (Siła/Zręcz/Int/Wit).
+    *   **Limit:** `(Level * 10) + 50`. Statystyki powyżej tego limitu są "odcinane" w walce.
+    *   **Koszt:** `10 * (ObecnyBonus ^ 2)`.
+*   **Doświadczenie (EXP):**
+    *   Skalowanie wymagań: `55 * L^2 + 150 * L` (dla Lvl 20+).
+    *   Kary/Bonusy za różnicę poziomów (Gracz nie dostaje EXP za słabe moby).
+*   **Ranking:** Globalny ranking TOP 100 graczy (sortowany po Levelu, potem EXP).
 
-### Wyprawy (Expeditions)
-*   30 Poziomów potworów.
-*   Odblokowywanie progresywne.
-*   System Bonusów (Mastery): Szansa na stałe bonusy do Golda/EXP/Dropu z konkretnego potwora.
+## 5. Przedmioty i Ekwipunek
+*   **Rzadkość:**
+    *   *Common (Szary)* - x1.0 statystyk.
+    *   *Unique (Niebieski)* - x1.6 statystyk.
+    *   *Heroic (Fioletowy)* - x2.8 statystyk.
+    *   *Legendary (Pomarańczowy)* - x6.0 statystyk + Specjalne efekty.
+    *   *Mythic/Tytanic (Czerwony)* - x15.0 statystyk.
+*   **Drop System:**
+    *   Wypadanie zależy od poziomu gracza (Legenda od 16 lvl, Tytan od 26 lvl).
+    *   **Zasada 80/20:** 80% szans na drop pod klasę gracza, 20% losowy.
+    *   **Szablony:** Bossowie i potwory mają przypisane unikalne szablony przedmiotów legendarnych/tytanicznych.
+*   **Sklep:**
+    *   Generuje tylko przedmioty Common/Unique.
+    *   Mnożnik statystyk 0.6x (słabsze niż z wypraw).
 
-### Bestiariusz
-*   Śledzenie zabitych potworów.
-*   Podgląd statystyk, dropów (szanse procentowe) i opisów.
-*   Odkrywanie informacji dopiero po pokonaniu wroga.
+## 6. Świat Gry
+*   **Wyprawy (Expeditions):**
+    *   Główny tryb PvE.
+    *   Odblokowywanie potworów progresywnie (`Level Gracza + 2`).
+    *   Expedycje nie blokują się przez Lochy.
+*   **Lochy (Dungeons):**
+    *   Trudniejsze wyzwania z Bossami.
+    *   Wymagają kluczy (teoretycznie) lub odpowiedniego poziomu.
+    *   Lepszy drop i więcej EXP.
+*   **Bestiariusz:**
+    *   Kompendium wiedzy o potworach.
+    *   Podgląd dropu (Legendy/Tytany) z informacją o odkryciu.
 
-### Lochy (Dungeons) - *W przygotowaniu/Częściowo zaimplementowane*
-*   System kluczy/energii.
-*   Unikalni Bossowie.
-*   Dedykowany drop Talizmanów.
-
-### Talizmany
-*   Dedykowany slot w ekwipunku.
-*   Pasywne bonusy.
-*   Niepodlegające handlowi (Soulbound).
-
-## 4. Technologia i Baza Danych
-
-*   **Frontend:** React + Vite + TailwindCSS.
-*   **Backend:** Supabase (PostgreSQL).
-*   **Tabele:**
-    *   `characters`: Stan gracza, ekwipunek (JSON), statystyki.
-    *   `monsters`: Baza potworów, statystyki, loot tables.
-    *   `items`: Szablony przedmiotów legendarnych/tytanicznych.
-    *   `combat_logs`: Historia walk.
-*   **Bezpieczeństwo:** RLS (Row Level Security) - gracz widzi/edytuje tylko swoje dane.
-
-## 5. Status Generatorów
-
-1.  **Generator Itemów (`src/utils/itemGenerator.ts`):** **GOTOWY**.
-    *   Obsługuje wszystkie rzadkości.
-    *   Skaluje statystyki z poziomem.
-    *   Implementuje nową ekonomię cenową.
-    *   Generuje przedmioty "na żywo" dla sklepu i dropu (poza legendami z bazy).
-
-2.  **Generator Grafik (`src/components/ItemIcon.tsx`):** **GOTOWY**.
-    *   Działa w oparciu o CSS/SVG.
-    *   Wizualnie rozróżnia typy i rzadkości.
-    *   Jest zintegrowany z Ekwipunkiem, Sklepem i Dropem.
-    *   *Nie wymaga generowania plików graficznych na serwerze.*
-
-## Do zrobienia (Next Steps)
-1.  Pełne przetestowanie balansu walki (czy 20% szansy na podpalenie to nie za dużo/za mało).
-2.  Rozbudowa mechaniki Lochów (interfejs wyboru pokoi).
-3.  Dodanie większej liczby szablonów Legend w bazie danych.
+## 7. Interfejs (UI/UX)
+*   **Responsywność:** Gra dostosowana do Mobile/Desktop (siatka ekwipunku, ukrywanie paneli).
+*   **Quality of Life:**
+    *   Szybka Walka.
+    *   Auto-uzupełnianie logowania (Remember Me).
+    *   Porównywanie przedmiotów (Tooltips).
+    *   Szczegółowe statystyki z podziałem na źródła (Base/Items).

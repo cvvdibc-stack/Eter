@@ -118,6 +118,13 @@ export interface DerivedStats {
   bloodFury: number;
   overload: number;
   unbreakable: number;
+  
+  // Uncapped stats for display
+  uncappedStrength: number;
+  uncappedDexterity: number;
+  uncappedIntelligence: number;
+  uncappedVitality: number;
+  statCap: number;
 }
 
 export type ItemRarity = 'common' | 'unique' | 'heroic' | 'legendary' | 'mythic' | 'talisman';
@@ -167,6 +174,12 @@ export interface Character {
   gold: number;
   premiumCurrency: number;
   baseStats: BaseStats;
+  boughtStats?: {
+    strength_bonus: number;
+    dexterity_bonus: number;
+    vitality_bonus: number;
+    intelligence_bonus: number;
+  };
   equipment: Record<ItemType, Item | null> | any;
   inventory: (Item | null)[];
   talismansInventory?: string[]; 
@@ -208,6 +221,7 @@ export interface LootTable {
     tytanic: number;
   };
   talisman?: number; // % Chance for talisman drop
+  expMultiplier?: number; // New field for Boss XP boost
   legends: {
     warrior: string;
     assassin: string;

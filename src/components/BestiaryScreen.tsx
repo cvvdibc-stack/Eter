@@ -4,9 +4,19 @@ import { Skull, Sword, Shield, Info, Search, Lock, Check } from 'lucide-react';
 
 export const BestiaryScreen: React.FC = () => {
   const { killedMonsters, unlockedMonsters, monsters, character } = useGame();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'ALL' | 'EXPEDITION' | 'DUNGEON' | 'EVENT'>('ALL');
 
-  const visibleMonsters = monsters || [];
+    // Filter logic
+    const visibleMonsters = (monsters || []).filter(m => {
+        if (activeTab === 'ALL') return true;
+        if (activeTab === 'DUNGEON') return m.id.startsWith('boss_dungeon');
+        // Assuming 'EXPEDITION' covers normal mobs and non-dungeon bosses
+        if (activeTab === 'EXPEDITION') return !m.id.startsWith('boss_dungeon') && m.type !== 'event'; 
+        // Future proofing event tab
+        if (activeTab === 'EVENT') return m.type === 'event';
+        return true;
+    });
 
   const selectedMonster = visibleMonsters.find(m => m.id === selectedId);
   const killCount = selectedId ? (killedMonsters[selectedId] || 0) : 0;
@@ -28,9 +38,31 @@ export const BestiaryScreen: React.FC = () => {
         {/* Left Panel: Monster List */}
         <div className="w-1/3 bg-[#161b22] border border-white/10 rounded-xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-white/10 bg-[#0b0d10]">
-                <h2 className="text-xl font-bold text-amber-600 font-serif uppercase tracking-wider flex items-center gap-2">
+                <h2 className="text-xl font-bold text-amber-600 font-serif uppercase tracking-wider flex items-center gap-2 mb-4">
                     <Search size={20} /> Bestiariusz
                 </h2>
+                
+                {/* Tabs */}
+                <div className="flex gap-1 bg-slate-900 p-1 rounded border border-white/10">
+                    <button 
+                        onClick={() => setActiveTab('ALL')}
+                        className={`flex-1 py-1 text-[10px] uppercase font-bold rounded transition-colors ${activeTab === 'ALL' ? 'bg-amber-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Wszystkie
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('EXPEDITION')}
+                        className={`flex-1 py-1 text-[10px] uppercase font-bold rounded transition-colors ${activeTab === 'EXPEDITION' ? 'bg-amber-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Wyprawy
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('DUNGEON')}
+                        className={`flex-1 py-1 text-[10px] uppercase font-bold rounded transition-colors ${activeTab === 'DUNGEON' ? 'bg-purple-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Lochy
+                    </button>
+                </div>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
                 {visibleMonsters.map(monster => {
@@ -186,39 +218,34 @@ export const BestiaryScreen: React.FC = () => {
                     </div>
 
                     {/* Rare Loot Table */}
-                    {killCount > 0 && selectedMonster.lootTable?.legends && (
+                    {selectedMonster.lootTable?.legends && (
                         <div className="relative z-10">
                             <h3 className="text-sm font-bold text-orange-500 uppercase tracking-wider mb-4 border-b border-orange-900/30 pb-1 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-orange-500 rotate-45"></div> Rare Loot
+                                <div className="w-2 h-2 bg-orange-500 rotate-45"></div> Przedmioty Legendarne
                             </h3>
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                                 {Object.entries(selectedMonster.lootTable.legends).map(([cls, itemId]) => {
-                                    // Check if player has ever found this item? 
-                                    // For now we mock "found" logic or use unlocked_monsters as proxy, 
-                                    // ideally we need 'discovered_items' array in character.
-                                    // Let's assume if you have killed the monster > 10 times you 'know' about the item but maybe haven't found it.
-                                    // Or simpler: show it as 'Undiscovered' until dropped. 
-                                    // Since we don't track dropped history yet, let's show placeholder state.
-                                    
-                                    const isDiscovered = false; // TODO: Integrate with discovered_items
+                                    // Placeholder state - in real app, check if item ID is in character.discoveredItems
+                                    const isDiscovered = false; 
                                     
                                     return (
-                                        <div key={cls} className="flex items-center justify-between p-3 bg-[#0b0d10] border border-white/5 rounded hover:bg-white/5 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded border flex items-center justify-center
-                                                    ${isDiscovered 
-                                                        ? 'border-orange-500/50 bg-orange-900/20 text-orange-500' 
-                                                        : 'border-slate-700 bg-slate-800 text-slate-600'}
-                                                `}>
-                                                    {isDiscovered ? <Check size={20} /> : <Lock size={16} />}
+                                        <div key={cls} className={`flex items-center gap-3 p-2 rounded border border-white/5 bg-[#0b0d10] opacity-70 hover:opacity-100 transition-opacity`}>
+                                            <div className={`w-12 h-12 rounded border-2 flex items-center justify-center shrink-0
+                                                ${isDiscovered 
+                                                    ? 'border-orange-500 bg-orange-900/20' 
+                                                    : 'border-slate-700 bg-slate-800 grayscale'}
+                                            `}>
+                                                {/* Generic icon or specific if discovered */}
+                                                <div className={`w-8 h-8 bg-orange-500 mask-icon`} style={{ maskImage: 'url(/icons/sword.svg)' }}></div>
+                                                {/* Fallback to text if no icon system */}
+                                                <span className={`text-xs font-bold ${isDiscovered ? 'text-orange-400' : 'text-slate-600'}`}>?</span>
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <div className="text-[10px] font-bold uppercase text-slate-500">
+                                                    {cls === 'warrior' ? 'Wojownik' : cls === 'mage' ? 'Mag' : cls === 'assassin' ? 'Zabójca' : 'Kleryk'}
                                                 </div>
-                                                <div>
-                                                    <div className={`text-xs font-bold uppercase tracking-wider ${isDiscovered ? 'text-orange-400' : 'text-slate-500'}`}>
-                                                        Legenda ({cls === 'warrior' ? 'Wojownik' : cls === 'mage' ? 'Mag' : cls === 'assassin' ? 'Zabójca' : 'Kleryk'})
-                                                    </div>
-                                                    <div className="text-sm text-slate-400">
-                                                        {isDiscovered ? 'Znany Przedmiot' : 'Nieodkryte'}
-                                                    </div>
+                                                <div className={`text-xs font-bold truncate ${isDiscovered ? 'text-orange-400' : 'text-slate-600'}`}>
+                                                    {isDiscovered ? 'Nazwa Przedmiotu' : 'Nieodkryty'}
                                                 </div>
                                             </div>
                                         </div>
@@ -229,31 +256,29 @@ export const BestiaryScreen: React.FC = () => {
                     )}
 
                     {/* Titanic Loot Table */}
-                    {killCount > 0 && selectedMonster.lootTable?.tytanic && (
+                    {selectedMonster.lootTable?.tytanic && (
                         <div className="relative z-10 mt-6">
                             <h3 className="text-sm font-bold text-red-600 uppercase tracking-wider mb-4 border-b border-red-900/30 pb-1 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-red-600 rotate-45"></div> Titanic Loot (Boss)
+                                <div className="w-2 h-2 bg-red-600 rotate-45"></div> Przedmioty Tytaniczne
                             </h3>
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                                 {Object.entries(selectedMonster.lootTable.tytanic).map(([cls, itemId]) => {
-                                    const isDiscovered = false; // TODO
+                                    const isDiscovered = false;
                                     return (
-                                        <div key={cls} className="flex items-center justify-between p-3 bg-[#0b0d10] border border-red-900/20 rounded hover:bg-red-900/10 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded border flex items-center justify-center
-                                                    ${isDiscovered 
-                                                        ? 'border-red-500/50 bg-red-900/20 text-red-500' 
-                                                        : 'border-slate-700 bg-slate-800 text-slate-600'}
-                                                `}>
-                                                    {isDiscovered ? <Check size={20} /> : <Lock size={16} />}
+                                        <div key={cls} className={`flex items-center gap-3 p-2 rounded border border-white/5 bg-[#0b0d10] opacity-70 hover:opacity-100 transition-opacity`}>
+                                            <div className={`w-12 h-12 rounded border-2 flex items-center justify-center shrink-0
+                                                ${isDiscovered 
+                                                    ? 'border-red-500 bg-red-900/20' 
+                                                    : 'border-slate-700 bg-slate-800 grayscale'}
+                                            `}>
+                                                <span className={`text-xs font-bold ${isDiscovered ? 'text-red-400' : 'text-slate-600'}`}>?</span>
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <div className="text-[10px] font-bold uppercase text-slate-500">
+                                                     {cls === 'warrior' ? 'Wojownik' : cls === 'mage' ? 'Mag' : cls === 'assassin' ? 'Zabójca' : 'Kleryk'}
                                                 </div>
-                                                <div>
-                                                    <div className={`text-xs font-bold uppercase tracking-wider ${isDiscovered ? 'text-red-400' : 'text-slate-500'}`}>
-                                                        Tytan ({cls === 'warrior' ? 'Wojownik' : cls === 'mage' ? 'Mag' : cls === 'assassin' ? 'Zabójca' : 'Kleryk'})
-                                                    </div>
-                                                    <div className="text-sm text-slate-400">
-                                                        {isDiscovered ? 'Znany Przedmiot' : 'Nieodkryte'}
-                                                    </div>
+                                                <div className={`text-xs font-bold truncate ${isDiscovered ? 'text-red-400' : 'text-slate-600'}`}>
+                                                    {isDiscovered ? 'Nazwa Przedmiotu' : 'Nieodkryty'}
                                                 </div>
                                             </div>
                                         </div>

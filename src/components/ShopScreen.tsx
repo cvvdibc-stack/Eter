@@ -33,7 +33,7 @@ export const ShopScreen: React.FC = () => {
         });
 
         return (
-            <div className="grid grid-cols-6 gap-2 content-start">
+            <div className="grid grid-cols-6 gap-1.5 content-start">
                 {slice.map((item, i) => {
                     const actualIndex = tab * 24 + i;
                     return (
@@ -42,7 +42,7 @@ export const ShopScreen: React.FC = () => {
                             onClick={() => item && onItemClick(item, actualIndex)}
                             onMouseEnter={(e) => item && setHoveredItem({ item, rect: e.currentTarget.getBoundingClientRect() })}
                             onMouseLeave={() => setHoveredItem(null)}
-                            className={`w-12 h-12 border-2 rounded flex items-center justify-center relative group cursor-pointer transition-colors
+                            className={`w-10 h-10 border-2 rounded flex items-center justify-center relative group cursor-pointer transition-colors
                                 ${item 
                                     ? isSelling 
                                         ? 'bg-[#1a1d24] border-slate-700 hover:border-green-500'
@@ -51,7 +51,7 @@ export const ShopScreen: React.FC = () => {
                         >
                              {item && (
                                 <div className="p-0.5 pointer-events-none">
-                                    <ItemIcon item={item} size={40} />
+                                    <ItemIcon item={item} size={32} />
                                 </div>
                              )}
                         </div>
@@ -62,9 +62,9 @@ export const ShopScreen: React.FC = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto p-4 h-[calc(100vh-80px)] flex gap-6 animate-in fade-in duration-300 items-start">
+        <div className="max-w-7xl mx-auto p-4 h-[calc(100vh-80px)] flex flex-col md:flex-row gap-6 animate-in fade-in duration-300 items-start">
             {/* NPC Panel (Left) */}
-            <div className="w-72 bg-slate-900 rounded-xl border-2 border-slate-700 relative overflow-hidden shadow-2xl flex flex-col shrink-0">
+            <div className="hidden md:flex w-72 bg-slate-900 rounded-xl border-2 border-slate-700 relative overflow-hidden shadow-2xl flex-col shrink-0">
                 <div className="h-[350px] w-full bg-black/40 relative flex items-center justify-center overflow-hidden shrink-0">
                     <img 
                         src="/avatars/handlarz.png" 

@@ -1,8 +1,30 @@
 import { BaseStats, DerivedStats, Profession, Item } from '../types';
 import { TALISMANS } from '../data/talismans';
+import { PROFESSIONS } from '../data/professions';
 
-// Total EXP for Level L = 55 * L^2 + 110 * L
-const getTotalExpForLevel = (level: number) => 55 * Math.pow(level, 2) + 110 * level;
+// Helper to calculate stats for a specific level based on profession growth
+export const getStatsForLevel = (profession: Profession, level: number): BaseStats => {
+    const prof = PROFESSIONS[profession];
+    const base = prof.baseStats;
+    const growth = prof.growth;
+    
+    // Level 1 = Base. Level 2 = Base + 1*Growth.
+    // So multiplier is level - 1.
+    const levelsToGrow = Math.max(0, level - 1);
+    
+    return {
+        strength: base.strength + (growth.strength * levelsToGrow),
+        dexterity: base.dexterity + (growth.dexterity * levelsToGrow),
+        intelligence: base.intelligence + (growth.intelligence * levelsToGrow),
+        vitality: base.vitality + (growth.vitality * levelsToGrow)
+    };
+};
+
+// Total EXP for Level L
+const getTotalExpForLevel = (level: number) => {
+    if (level <= 20) return 55 * Math.pow(level, 2) + 110 * level;
+    return 55 * Math.pow(level, 2) + 150 * level; // Increased scaling for 20+
+};
 
 export const XP_TO_NEXT_LEVEL = (currentLevel: number) => {
     const totalNext = getTotalExpForLevel(currentLevel + 1);
@@ -45,22 +67,27 @@ export const calculateMonsterExpGain = (playerLevel: number, monsterLevel: numbe
 };
 
 export const calculateMonsterGold = (level: number, isBoss: boolean = false): number => {
+    const multiplier = 1.2; // Gold scaling buff
     if (isBoss) {
-        return (level * 8) + Math.floor(Math.random() * 26) + 5; 
+        return Math.floor(((level * 8) + Math.floor(Math.random() * 26) + 5) * multiplier); 
     } else {
         const base = 1 + Math.floor(level * 1.2);
         const rng = Math.floor(Math.random() * (level * 0.6 + 1)); 
-        return base + rng;
+        return Math.floor((base + rng) * multiplier);
     }
+};
+
+export const calculateMaxTrainableStat = (baseStat: number, level: number) => {
+    return baseStat * 2 + level * 10 + 20;
 };
 
 const getClassBaseSA = (prof: Profession): number => {
     switch(prof) {
-        case 'assassin': return 120;
-        case 'mage': return 100;
-        case 'cleric': return 95;
-        case 'warrior': return 90;
-        default: return 90;
+        case 'assassin': return 90; // Was 120
+        case 'mage': return 80; // Was 100
+        case 'cleric': return 75; // Was 95
+        case 'warrior': return 70; // Was 90
+        default: return 70;
     }
 };
 
@@ -85,9 +112,11 @@ export const calculateDerivedStats = (
   level: number, 
   profession: Profession, 
   equipment: Item[] = [],
-  activeTalismans: string[] = []
+  activeTalismans: string[] = [],
+  boughtStats?: { strength_bonus: number, dexterity_bonus: number, intelligence_bonus: number, vitality_bonus: number }
 ): DerivedStats => {
   const safeBase = base || { strength: 0, dexterity: 0, intelligence: 0, vitality: 0 };
+  const safeBought = boughtStats || { strength_bonus: 0, dexterity_bonus: 0, intelligence_bonus: 0, vitality_bonus: 0 };
 
   // 1. Talismans
   let tStr = 0, tDex = 0, tInt = 0, tVit = 0;
@@ -226,11 +255,23 @@ export const calculateDerivedStats = (
     }
   });
 
-  // 3. Total Stats
-  const str = safeBase.strength + tStr + eStr;
-  const dex = safeBase.dexterity + tDex + eDex;
-  const int = safeBase.intelligence + tInt + eInt;
-  const vit = safeBase.vitality + tVit + eVit;
+  // 3. Total Stats (Hard Cap by Level: Level * 10 + 50)
+  // Note: Items can technically go above this cap, but for balance "effectiveness", 
+  // we might want to cap here or just let items be powerful.
+  // User request: "Stats above max should not work".
+  // This implies Effective Stat = Min(Total, Cap).
+  
+  const statCap = (level * 10) + 50;
+
+  const rawStr = safeBase.strength + tStr + eStr + safeBought.strength_bonus;
+  const rawDex = safeBase.dexterity + tDex + eDex + safeBought.dexterity_bonus;
+  const rawInt = safeBase.intelligence + tInt + eInt + safeBought.intelligence_bonus;
+  const rawVit = safeBase.vitality + tVit + eVit + safeBought.vitality_bonus;
+
+  const str = Math.min(rawStr, statCap);
+  const dex = Math.min(rawDex, statCap);
+  const int = Math.min(rawInt, statCap);
+  const vit = Math.min(rawVit, statCap);
 
   // 4. Derived
   const maxHp = (vit * 6) + (level * 10) + 50 + tHp + eHp; 
@@ -257,7 +298,7 @@ export const calculateDerivedStats = (
       case 'cleric': damageStat = int; multiplier = 1.4; break;
   }
 
-  const statDmg = (damageStat * multiplier) * 0.5;
+  const statDmg = (damageStat * multiplier) * 0.35; // Reduced from 0.5 (-30%)
 
   const physBonus = 1 + (tDmgPct + tPhysPct) / 100;
   const magBonus = 1 + (tDmgPct + tMagPct) / 100;
@@ -338,11 +379,24 @@ export const calculateDerivedStats = (
     poisonChance: ePoison,
     burnChance: eBurn,
     
+    uncappedStrength: 0,
+    uncappedDexterity: 0,
+    uncappedIntelligence: 0,
+    uncappedVitality: 0,
+    statCap: 0,
+
     // Mechanics
     etherealVeil: eEthereal,
     bloodFury: eBloodFury,
     overload: eOverload,
     unbreakable: eUnbreakable,
+    
+    // Raw / Uncapped for Display
+    uncappedStrength: rawStr,
+    uncappedDexterity: rawDex,
+    uncappedIntelligence: rawInt,
+    uncappedVitality: rawVit,
+    statCap: statCap
     // Flags in boolean? Or logic handles numbers > 0.
   };
 };

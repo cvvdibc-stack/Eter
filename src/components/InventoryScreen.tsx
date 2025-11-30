@@ -7,17 +7,47 @@ import { getAvatarSrc } from '../utils/assets';
 import { ItemTooltip } from './ItemTooltip';
 import { ItemIcon } from './ItemIcon';
 
-const StatRow: React.FC<{ label: string, value: string | number, desc?: string }> = ({ label, value, desc }) => (
+const StatRow: React.FC<{ label: string, value: string | number, rawValue?: number, cap?: number, base?: number, items?: number, desc?: string }> = ({ label, value, rawValue, cap, base, items, desc }) => {
+    const isCapped = rawValue !== undefined && cap !== undefined && rawValue >= cap;
+    
+    return (
     <div className="flex justify-between items-center py-1 border-b border-white/5 last:border-0 hover:bg-white/5 px-2 rounded transition-colors group relative">
         <span className="text-slate-400 text-sm font-medium">{label}</span>
-        <span className="text-slate-200 font-mono text-sm font-bold">{value}</span>
-        {desc && (
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-48 bg-black p-2 text-xs text-slate-300 rounded border border-slate-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
-                {desc}
-            </div>
-        )}
+        <div className="flex items-center gap-2">
+            <span className={`font-mono text-sm font-bold ${isCapped ? 'text-amber-500' : 'text-slate-200'}`}>
+                {value}
+            </span>
+            {isCapped && <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">MAX</span>}
+        </div>
+        
+        {/* Enhanced Tooltip */}
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-64 bg-black/95 p-3 text-xs text-slate-300 rounded-lg border border-slate-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+            <div className="font-bold text-white mb-2 border-b border-white/10 pb-1 uppercase tracking-wider">{label}</div>
+            {desc && <div className="text-slate-400 italic mb-3">{desc}</div>}
+            
+            {base !== undefined && (
+                <div className="grid grid-cols-2 gap-y-1 text-[11px]">
+                    <span className="text-slate-500">Podstawy:</span>
+                    <span className="text-right font-mono text-white">{base}</span>
+                    
+                    <span className="text-slate-500">Z itemów:</span>
+                    <span className="text-right font-mono text-blue-400">+{items}</span>
+                    
+                    <span className="text-slate-500">Posiadane:</span>
+                    <span className="text-right font-mono text-yellow-500">{rawValue}</span>
+                    
+                    <span className="text-slate-500">Limit (Lvl {Math.floor(((cap || 50) - 50)/10)}):</span>
+                    <span className="text-right font-mono text-red-500">{cap}</span>
+                </div>
+            )}
+            {isCapped && (
+                <div className="mt-2 text-[10px] text-red-400 border-t border-red-900/30 pt-1">
+                    Osiągnięto limit poziomu! Nadmiarowe punkty nie działają.
+                </div>
+            )}
+        </div>
     </div>
-);
+)};
 
 const StatsCategory: React.FC<{ title: string, color: string, children: React.ReactNode }> = ({ title, color, children }) => (
     <div className="mb-4">
@@ -29,7 +59,7 @@ const StatsCategory: React.FC<{ title: string, color: string, children: React.Re
 );
 
 export const InventoryScreen: React.FC = () => {
-  const { character, equipItem, unequipItem, moveItem } = useGame();
+  const { character, equipItem, unequipItem, moveItem, showToast } = useGame();
   const [imgError, setImgError] = useState(false);
   
   // Updated State Type for Comparison
@@ -70,22 +100,59 @@ export const InventoryScreen: React.FC = () => {
     character.level, 
     character.profession, 
     equipmentList,
-    character.activeTalismans || []
+    character.activeTalismans || [],
+    character.boughtStats
   );
 
   const isMagicClass = character.profession === 'mage' || character.profession === 'cleric';
 
-  const renderStatBar = (label: string, value: number, max: number = 100, colorClass: string = 'bg-amber-600') => (
-     <div className="mb-3">
+  const renderStatBar = (label: string, value: number, max: number = 100, colorClass: string = 'bg-amber-600', statKey?: string) => {
+     // Calculate tooltip data if statKey is provided
+     let tooltip = null;
+     if (statKey && character.boughtStats && character.baseStats) {
+         const base = character.baseStats[statKey as keyof typeof character.baseStats] + (character.boughtStats[`${statKey}_bonus` as keyof typeof character.boughtStats] || 0);
+         // @ts-ignore
+         const uncapped = stats[`uncapped${statKey.charAt(0).toUpperCase() + statKey.slice(1)}`];
+         const fromItems = uncapped - base;
+         const isCapped = uncapped >= max;
+         
+         tooltip = (
+            <div className="absolute left-full top-0 ml-2 w-48 bg-black/95 p-3 text-xs text-slate-300 rounded-lg border border-slate-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[60] shadow-xl">
+                <div className="font-bold text-white mb-2 border-b border-white/10 pb-1 uppercase tracking-wider">{label}</div>
+                <div className="grid grid-cols-2 gap-y-1 text-[11px]">
+                    <span className="text-slate-500">Podstawy:</span>
+                    <span className="text-right font-mono text-white">{base}</span>
+                    
+                    <span className="text-slate-500">Z itemów:</span>
+                    <span className="text-right font-mono text-blue-400">+{fromItems}</span>
+                    
+                    <span className="text-slate-500">Posiadane:</span>
+                    <span className="text-right font-mono text-yellow-500">{uncapped}</span>
+                    
+                    <span className="text-slate-500">Limit:</span>
+                    <span className="text-right font-mono text-red-500">{max}</span>
+                </div>
+                {isCapped && (
+                    <div className="mt-2 text-[10px] text-red-400 border-t border-red-900/30 pt-1">
+                        MAX (Limit Poziomu)
+                    </div>
+                )}
+            </div>
+         );
+     }
+
+     return (
+     <div className="mb-3 group relative">
         <div className="flex justify-between text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider">
             <span>{label}</span>
-            <span>{value}</span>
+            <span className={value >= max ? 'text-amber-500' : ''}>{value}</span>
         </div>
         <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-white/5">
             <div className={`h-full ${colorClass}`} style={{ width: `${Math.min(100, (value / max) * 100)}%` }}></div>
         </div>
+        {tooltip}
      </div>
-  );
+  )};
 
   const renderEquipSlot = (type: ItemType) => {
     const item = character.equipment?.[type];
@@ -128,10 +195,10 @@ export const InventoryScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex justify-center gap-8 h-[calc(100vh-140px)] overflow-hidden p-6 max-w-7xl mx-auto">
+    <div className="flex flex-col lg:flex-row justify-center gap-8 h-[calc(100vh-140px)] overflow-hidden p-4 lg:p-6 max-w-7xl mx-auto">
       
       {/* LEFT COLUMN: Avatar & Stats */}
-      <div className="w-[340px] flex flex-col gap-4 h-full">
+      <div className="w-full lg:w-[340px] flex flex-col gap-4 h-full">
         
         {/* Avatar */}
         <div className="w-full h-[320px] bg-[#161b22] border-2 border-amber-900/30 rounded-xl overflow-hidden relative shadow-2xl shrink-0 group">
@@ -158,7 +225,7 @@ export const InventoryScreen: React.FC = () => {
         </div>
 
         {/* Stats Panel */}
-        <div className="flex-1 bg-[#161b22] border-2 border-white/10 p-4 rounded-xl shadow-lg flex flex-col gap-2 overflow-hidden">
+        <div className="flex-1 bg-[#161b22] border-2 border-white/10 p-4 rounded-xl shadow-lg flex flex-col gap-2 overflow-visible z-20">
             <div>
                 <div className="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
                     <h3 className="text-xs text-slate-500 uppercase font-bold">Statystyki</h3>
@@ -198,10 +265,10 @@ export const InventoryScreen: React.FC = () => {
                     </div>
                 </div>
 
-                {renderStatBar('Siła', stats.strength, 100, 'bg-red-700')}
-                {renderStatBar('Zręczność', stats.dexterity, 100, 'bg-green-700')}
-                {renderStatBar('Inteligencja', stats.intelligence, 100, 'bg-blue-700')}
-                {renderStatBar('Witalność', stats.vitality, 100, 'bg-amber-700')}
+                {renderStatBar('Siła', stats.strength, stats.statCap, 'bg-red-700', 'strength')}
+                {renderStatBar('Zręczność', stats.dexterity, stats.statCap, 'bg-green-700', 'dexterity')}
+                {renderStatBar('Inteligencja', stats.intelligence, stats.statCap, 'bg-blue-700', 'intelligence')}
+                {renderStatBar('Witalność', stats.vitality, stats.statCap, 'bg-amber-700', 'vitality')}
             </div>
 
             <div className="mt-auto space-y-1.5 text-sm text-slate-300 border-t border-white/5 pt-3">
@@ -234,7 +301,7 @@ export const InventoryScreen: React.FC = () => {
       </div>
 
       {/* RIGHT COLUMN: Equipment & Backpack */}
-      <div className="w-[420px] flex flex-col gap-4 h-full">
+      <div className="w-full lg:w-[420px] flex flex-col gap-4 h-full">
         {/* Equipment */}
         <div className="bg-[#161b22] border-2 border-white/10 rounded-xl p-4 shadow-lg relative bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')] shrink-0 h-[420px]">
             <div className="absolute inset-0 bg-amber-900/5 pointer-events-none"></div>
@@ -273,7 +340,7 @@ export const InventoryScreen: React.FC = () => {
                  </div>
             </div>
             
-            <div className="flex-1 bg-[#0f1115] border border-[#2a2e38] p-2 grid grid-cols-6 gap-2 overflow-y-auto content-start">
+            <div className="flex-1 bg-[#0f1115] border border-[#2a2e38] p-2 grid grid-cols-4 sm:grid-cols-6 gap-2 overflow-y-auto content-start">
                  {inventorySlice.map((item, i) => {
                     const actualIndex = activeTab * 24 + i;
                     const isUnusable = item && (item.levelReq > character.level || (item.classReq && item.classReq !== character.profession));
@@ -281,7 +348,14 @@ export const InventoryScreen: React.FC = () => {
                     return (
                         <div 
                             key={actualIndex}
-                            onClick={() => item && equipItem(item, actualIndex)}
+                            onClick={() => {
+                                if (!item) return;
+                                if (item.classReq && item.classReq !== character.profession) {
+                                    showToast(`Twoja profesja nie może założyć tego przedmiotu! (Wymagany: ${item.classReq})`, 'error');
+                                    return;
+                                }
+                                equipItem(item, actualIndex);
+                            }}
                             onMouseEnter={(e) => item && setHoveredItem({ 
                                 item, 
                                 rect: e.currentTarget.getBoundingClientRect(), 
@@ -341,10 +415,42 @@ export const InventoryScreen: React.FC = () => {
                         
                         <div className="space-y-6">
                             <StatsCategory title="Główne Bonusy (Core)" color="text-blue-400">
-                                <StatRow label="Siła" value={stats.strength} desc="Zwiększa obrażenia fizyczne i pancerz." />
-                                <StatRow label="Zręczność" value={stats.dexterity} desc="Zwiększa Unik, Krytyk i SA." />
-                                <StatRow label="Inteligencja" value={stats.intelligence} desc="Zwiększa obrażenia magiczne i odporność." />
-                                <StatRow label="Witalność" value={stats.vitality} desc="Zwiększa Max HP." />
+                                <StatRow 
+                                    label="Siła" 
+                                    value={stats.strength} 
+                                    rawValue={stats.uncappedStrength}
+                                    cap={stats.statCap}
+                                    base={character.baseStats.strength + (character.boughtStats?.strength_bonus || 0)}
+                                    items={stats.uncappedStrength - (character.baseStats.strength + (character.boughtStats?.strength_bonus || 0))}
+                                    desc="Zwiększa obrażenia fizyczne i pancerz." 
+                                />
+                                <StatRow 
+                                    label="Zręczność" 
+                                    value={stats.dexterity} 
+                                    rawValue={stats.uncappedDexterity}
+                                    cap={stats.statCap}
+                                    base={character.baseStats.dexterity + (character.boughtStats?.dexterity_bonus || 0)}
+                                    items={stats.uncappedDexterity - (character.baseStats.dexterity + (character.boughtStats?.dexterity_bonus || 0))}
+                                    desc="Zwiększa Unik, Krytyk i SA." 
+                                />
+                                <StatRow 
+                                    label="Inteligencja" 
+                                    value={stats.intelligence} 
+                                    rawValue={stats.uncappedIntelligence}
+                                    cap={stats.statCap}
+                                    base={character.baseStats.intelligence + (character.boughtStats?.intelligence_bonus || 0)}
+                                    items={stats.uncappedIntelligence - (character.baseStats.intelligence + (character.boughtStats?.intelligence_bonus || 0))}
+                                    desc="Zwiększa obrażenia magiczne i odporność." 
+                                />
+                                <StatRow 
+                                    label="Witalność" 
+                                    value={stats.vitality} 
+                                    rawValue={stats.uncappedVitality}
+                                    cap={stats.statCap}
+                                    base={character.baseStats.vitality + (character.boughtStats?.vitality_bonus || 0)}
+                                    items={stats.uncappedVitality - (character.baseStats.vitality + (character.boughtStats?.vitality_bonus || 0))}
+                                    desc="Zwiększa Max HP." 
+                                />
                             </StatsCategory>
 
                             <StatsCategory title="Ofensywne (Combat)" color="text-red-400">

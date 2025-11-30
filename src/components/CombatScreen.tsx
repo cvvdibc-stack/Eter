@@ -4,13 +4,13 @@ import { calculateDerivedStats, calculateMonsterExpGain, calculateMonsterGold } 
 import { calculateDamage } from '../utils/combat';
 import { generateLoot } from '../utils/lootSystem';
 import { DerivedStats, Monster, CombatTurn } from '../types';
-import { Sword, Skull } from 'lucide-react';
+import { Sword, Skull, Zap, Heart } from 'lucide-react';
 import { getAvatarSrc, getMonsterSrc } from '../utils/assets';
 
 export const CombatScreen: React.FC = () => {
   const { 
       character, changeView, addLog, gainExp, gainGold, addItem, activeMonsterId, activeMonsterType,
-      unlockMonster, addCombatLog, isQuickCombat, recordKill, unlockBonus, updateHp,
+      addCombatLog, isQuickCombat, recordKill, unlockBonus, updateHp, healCharacter,
       monsters, itemTemplates
   } = useGame();
   const [monster, setMonster] = useState<Monster | null>(null);
@@ -57,7 +57,8 @@ export const CombatScreen: React.FC = () => {
         character.level, 
         character.profession, 
         character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-        character.activeTalismans || []
+        character.activeTalismans || [],
+        character.boughtStats
     );
 
     setMonsterHp(selectedMonster.maxHp);
@@ -104,7 +105,7 @@ export const CombatScreen: React.FC = () => {
     if (!monster || !character || battleOver) return;
 
     if (isQuickCombat) {
-        resolveQuickCombat();
+        resolveQuickCombat(monster.maxHp, character.currentHp);
     } else {
         // Delay only if it's not the very first instant turn, or make it consistent
         const timer = setTimeout(() => {
@@ -114,13 +115,14 @@ export const CombatScreen: React.FC = () => {
     }
   }, [turnCount, battleOver, monster, character, isQuickCombat]);
 
-  const resolveQuickCombat = () => {
+  const resolveQuickCombat = (startMonsterHp: number, startPlayerHp: number) => {
       if (!monster || !character) return;
 
       const playerStats = calculateDerivedStats(
         character.baseStats, character.level, character.profession, 
         character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-        character.activeTalismans || []
+        character.activeTalismans || [],
+        character.boughtStats
       );
 
       const monsterSA = getMonsterSA(monster);
@@ -139,31 +141,30 @@ export const CombatScreen: React.FC = () => {
 
       const damageType: 'phys' | 'mag' = (character.profession === 'mage' || character.profession === 'cleric') ? 'mag' : 'phys';
 
-      let currentMonsterHp = monster.maxHp;
-      let currentPlayerHp = character.currentHp;
+      let currentMonsterHp = startMonsterHp;
+      let currentPlayerHp = startPlayerHp;
       let logs: CombatTurn[] = [];
-      let turn = 0;
+      let turn = turnCount;
       
-      // Initiative
-      let isPlayer = playerStats.attackSpeed >= monsterSA;
-      if (playerStats.attackSpeed === monsterSA) isPlayer = Math.random() > 0.5;
+      // Initiative (Already decided if mid-fight? Re-eval for quick combat simplicity)
+      let isPlayer = isPlayerTurn;
 
       logs.push({
           attackerId: 'system', defenderId: 'system', action: 'mechanic', damage: 0, isCrit: false,
-          log: isPlayer ? `Szybka walka: Atakujesz pierwszy!` : `Szybka walka: ${monster.name} atakuje pierwszy!`
+          log: `=== SZYBKA WALKA ===`
       });
 
-      // DoT Simulation
+      // DoT Simulation (Reset DoTs for simplicity in quick combat or carry over?)
+      // Let's reset for simplicity or assume 0
       let poisonTurns = 0;
       let burnTurns = 0;
       const poisonDmg = Math.floor(playerStats.dexterity * 0.5);
       const burnDmg = Math.floor(playerStats.intelligence * 0.5);
       
-      // Check for offhand/stat chances (ANY source)
       const poisonChance = playerStats.poisonChance || 0;
       const burnChance = playerStats.burnChance || 0;
 
-      while (currentMonsterHp > 0 && currentPlayerHp > 0 && turn < 50) {
+      while (currentMonsterHp > 0 && currentPlayerHp > 0 && turn < 100) {
           turn++;
 
           // Apply DoTs to Monster
@@ -212,11 +213,11 @@ export const CombatScreen: React.FC = () => {
 
       setMonsterHp(currentMonsterHp);
       setPlayerHp(currentPlayerHp);
-      setCombatLogs(logs);
+      setCombatLogs(prev => [...prev, ...logs]); // Append logs
       setTurnCount(turn);
 
-      if (currentPlayerHp > 0) endBattle(true, logs, currentPlayerHp);
-      else endBattle(false, logs, 0);
+      if (currentPlayerHp > 0) endBattle(true, [...combatLogs, ...logs], currentPlayerHp);
+      else endBattle(false, [...combatLogs, ...logs], 0);
   };
 
   const executeTurn = () => {
@@ -225,7 +226,8 @@ export const CombatScreen: React.FC = () => {
     const playerStats = calculateDerivedStats(
         character.baseStats, character.level, character.profession, 
         character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-        character.activeTalismans || []
+        character.activeTalismans || [],
+        character.boughtStats
     );
     
     const monsterStats: DerivedStats = {
@@ -341,9 +343,7 @@ export const CombatScreen: React.FC = () => {
       if (dungeonRunStr && activeMonsterType === 'DUNGEON') {
           try {
               const run = JSON.parse(dungeonRunStr);
-              // Mark as completed so DungeonScreen knows to advance
               localStorage.setItem('active_dungeon_run', JSON.stringify({ ...run, status: 'COMPLETED' }));
-              // Wait for manual continue
           } catch(e) {}
       }
 
@@ -352,8 +352,7 @@ export const CombatScreen: React.FC = () => {
       
       const bonuses = character!.unlocked_bonuses?.[monster.id] || [];
       
-      // Stats bonuses
-      const stats = calculateDerivedStats(character!.baseStats, character!.level, character!.profession, Object.values(character!.equipment).filter(i=>i) as any, character!.activeTalismans || []);
+      const stats = calculateDerivedStats(character!.baseStats, character!.level, character!.profession, Object.values(character!.equipment).filter(i=>i) as any, character!.activeTalismans || [], character!.boughtStats);
       const bonusExpPct = (stats.bonusExp || 0) / 100;
       const bonusGoldPct = (stats.bonusGold || 0) / 100;
 
@@ -376,12 +375,7 @@ export const CombatScreen: React.FC = () => {
       gainGold(goldReward);
       recordKill(monster.id);
       
-      // 3. Unlock Next
-      const currentIndex = monsters.findIndex(m => m.id === monster.id);
-      if (currentIndex !== -1 && currentIndex < monsters.length - 1) {
-          const nextMonster = monsters[currentIndex + 1];
-          unlockMonster(nextMonster.id);
-      }
+      // Removed Manual Unlock (Handled by Level Up + useEffect in GameContext)
 
       // 4. Mastery Bonus Chance
       if (Math.random() < 0.03) {
@@ -439,7 +433,8 @@ export const CombatScreen: React.FC = () => {
       character.level, 
       character.profession, 
       character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-      character.activeTalismans || []
+      character.activeTalismans || [],
+      character.boughtStats
   ).maxHp;
 
   const playerStats = calculateDerivedStats(
@@ -447,7 +442,8 @@ export const CombatScreen: React.FC = () => {
     character.level, 
     character.profession, 
     character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-    character.activeTalismans || []
+    character.activeTalismans || [],
+    character.boughtStats
   );
 
   const isMagicClass = character.profession === 'mage' || character.profession === 'cleric';
@@ -463,6 +459,11 @@ export const CombatScreen: React.FC = () => {
       } else {
           changeView('EXPEDITION');
       }
+  };
+
+  const handleHeal = () => {
+      const healCost = character.level * 5;
+      healCharacter(healCost);
   };
 
   return (
@@ -536,7 +537,7 @@ export const CombatScreen: React.FC = () => {
       </div>
 
       {/* Stats Comparison Bar */}
-      <div className="flex justify-between bg-[#0b0d10] p-2 rounded-lg mb-4 text-[10px] text-slate-400 uppercase font-bold tracking-wider border border-white/10 shadow-inner">
+      <div className="flex justify-between bg-[#0b0d10] p-2 rounded-lg mb-4 text-[10px] text-slate-400 uppercase font-bold tracking-wider border border-white/10 shadow-inner items-center">
         <div className="flex gap-4 pl-2">
             <span>DMG: <span className="text-amber-500 font-mono text-xs">
                 {isMagicClass 
@@ -546,6 +547,17 @@ export const CombatScreen: React.FC = () => {
             <span>SA: <span className="text-cyan-400 font-mono text-xs">{playerStats.attackSpeed}</span></span>
             <span>Unik: <span className="text-green-400 font-mono text-xs">{playerStats.dodgeChance}%</span></span>
         </div>
+        
+        {/* Quick Combat Button */}
+        {!battleOver && (
+            <button 
+                onClick={() => resolveQuickCombat(monsterHp, playerHp)}
+                className="flex items-center gap-1 bg-yellow-900/30 hover:bg-yellow-900/50 text-yellow-500 px-3 py-1 rounded border border-yellow-700/50 text-xs transition-colors"
+            >
+                <Zap size={12} /> Szybka Walka
+            </button>
+        )}
+
         <div className="flex gap-4 pr-2 text-right">
             <span>Unik: <span className="text-green-400 font-mono text-xs">5%</span></span>
             <span>SA: <span className="text-red-400 font-mono text-xs">{monsterSA}</span></span>
@@ -580,9 +592,19 @@ export const CombatScreen: React.FC = () => {
             
             {/* Result Panel */}
             {battleOver && battleResult && (
-                <div className={`mt-4 p-4 rounded-lg border-2 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center gap-3 animate-in slide-in-from-bottom-4 duration-500
+                <div className={`mt-4 p-4 rounded-lg border-2 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center gap-3 animate-in slide-in-from-bottom-4 duration-500 relative
                     ${battleResult === 'WIN' ? 'border-amber-500/50' : 'border-red-600/50'}`}
                 >
+                    {/* Discrete Heal Button */}
+                    <button 
+                        onClick={handleHeal}
+                        className="absolute top-2 right-2 flex items-center gap-1.5 bg-green-950/40 hover:bg-green-900/60 text-green-400 px-2 py-1.5 rounded border border-green-900/50 text-[10px] font-mono transition-colors"
+                        title="Ulecz postać"
+                    >
+                        <Heart size={12} className="text-green-500" />
+                        <span>{character.level * 5}g</span>
+                    </button>
+
                     <h3 className={`text-2xl font-black uppercase tracking-widest ${battleResult === 'WIN' ? 'text-amber-500' : 'text-red-600'}`}>
                         {battleResult === 'WIN' ? 'Zwycięstwo!' : 'Porażka'}
                     </h3>
@@ -595,16 +617,18 @@ export const CombatScreen: React.FC = () => {
                         </div>
                     )}
                     
-                    <button 
-                        onClick={handleReturn}
-                        className={`px-8 py-2 rounded font-bold text-sm uppercase tracking-widest transition-all border ${
-                            battleResult === 'WIN'
-                                ? 'bg-amber-700 hover:bg-amber-600 border-amber-500 text-white'
-                                : 'bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-300'
-                        }`}
-                    >
-                        {battleResult === 'WIN' ? 'Kontynuuj' : 'Powrót do mapy'}
-                    </button>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={handleReturn}
+                            className={`px-8 py-2 rounded font-bold text-sm uppercase tracking-widest transition-all border ${
+                                battleResult === 'WIN'
+                                    ? 'bg-amber-700 hover:bg-amber-600 border-amber-500 text-white'
+                                    : 'bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-300'
+                            }`}
+                        >
+                            {battleResult === 'WIN' ? 'Kontynuuj' : 'Powrót do mapy'}
+                        </button>
+                    </div>
                 </div>
             )}
             

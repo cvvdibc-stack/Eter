@@ -17,10 +17,10 @@ export const generateLoot = (level: number, profession: Profession, lootTable?: 
   const allowedRarities = ['common'];
   // Check if level_gate exists (it might be missing on older data or partial updates)
   if (lootTable.level_gate) {
-      if (level >= lootTable.level_gate.unique) allowedRarities.push('unique');
-      if (level >= lootTable.level_gate.heroic) allowedRarities.push('heroic');
-      if (level >= lootTable.level_gate.legendary) allowedRarities.push('legendary');
-      if (level >= lootTable.level_gate.tytanic) allowedRarities.push('tytanic');
+      if (lootTable.level_gate.unique !== undefined && level >= lootTable.level_gate.unique) allowedRarities.push('unique');
+      if (lootTable.level_gate.heroic !== undefined && level >= lootTable.level_gate.heroic) allowedRarities.push('heroic');
+      if (lootTable.level_gate.legendary !== undefined && level >= lootTable.level_gate.legendary) allowedRarities.push('legendary');
+      if (lootTable.level_gate.tytanic !== undefined && level >= lootTable.level_gate.tytanic) allowedRarities.push('tytanic');
   } else {
       // Fallback if no level_gate defined
       allowedRarities.push('unique');
@@ -30,19 +30,27 @@ export const generateLoot = (level: number, profession: Profession, lootTable?: 
   const rand = Math.random() * 100;
   let rarity: ItemRarity = 'common';
 
-  // Safety check for rarity table presence
+  // Safety check for rarity table presence - handle both missing rarity object and missing tytanic property
   const rarities = lootTable.rarity || { common: 100, unique: 0, heroic: 0, legendary: 0, tytanic: 0 };
+  // Ensure all required properties exist with safe defaults
+  const safeRarities = {
+    common: rarities.common ?? 100,
+    unique: rarities.unique ?? 0,
+    heroic: rarities.heroic ?? 0,
+    legendary: rarities.legendary ?? 0,
+    tytanic: rarities.tytanic ?? 0
+  };
 
-  if (allowedRarities.includes('tytanic') && rarities.tytanic > 0 && rand < rarities.tytanic) {
+  if (allowedRarities.includes('tytanic') && safeRarities.tytanic > 0 && rand < safeRarities.tytanic) {
       rarity = 'mythic';
   }
-  else if (allowedRarities.includes('legendary') && rand < (rarities.tytanic + rarities.legendary)) {
+  else if (allowedRarities.includes('legendary') && rand < (safeRarities.tytanic + safeRarities.legendary)) {
       rarity = 'legendary';
   }
-  else if (allowedRarities.includes('heroic') && rand < (rarities.tytanic + rarities.legendary + rarities.heroic)) {
+  else if (allowedRarities.includes('heroic') && rand < (safeRarities.tytanic + safeRarities.legendary + safeRarities.heroic)) {
       rarity = 'heroic';
   }
-  else if (allowedRarities.includes('unique') && rand < (rarities.tytanic + rarities.legendary + rarities.heroic + rarities.unique)) {
+  else if (allowedRarities.includes('unique') && rand < (safeRarities.tytanic + safeRarities.legendary + safeRarities.heroic + safeRarities.unique)) {
       rarity = 'unique';
   }
   else {

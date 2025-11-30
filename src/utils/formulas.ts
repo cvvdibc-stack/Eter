@@ -285,6 +285,9 @@ export const calculateDerivedStats = (
       dodgeChance += dex * 0.1;
   }
   
+  // Cap dodge chance at 60%
+  dodgeChance = Math.min(60, dodgeChance);
+  
   const baseWpnMin = 1 + level; 
   const baseWpnMax = 2 + level;
 

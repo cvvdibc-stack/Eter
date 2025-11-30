@@ -16,6 +16,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { CharacterSelection } from './components/CharacterSelection';
 import { RankingScreen } from './components/RankingScreen';
 import { TrainerScreen } from './components/TrainerScreen';
+import { ArenaScreen } from './components/ArenaScreen';
 
 const GameContent: React.FC = () => {
   const { view, user } = useGame();
@@ -51,10 +52,7 @@ const GameContent: React.FC = () => {
           case 'DUNGEON':
              return <DungeonScreen />;
           case 'ARENA':
-             return <div className="p-10 text-white bg-black/50 rounded border border-amber-900/50 text-center">
-                <h2 className="text-3xl font-bold text-amber-600 mb-4 font-serif">Arena Gladiatorów</h2>
-                <p className="text-slate-400">Walcz z innymi graczami o chwałę. (PvP wkrótce)</p>
-             </div>;
+             return <ArenaScreen />;
           case 'SHOP':
             return <ShopScreen />;
           case 'DOCTOR':

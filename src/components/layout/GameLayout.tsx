@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { 
-  Shield, Map, Store, HeartPulse, User, LogOut, Crown, Swords, Skull, Book, Gem, Calendar, Coins, Gavel, Trophy, Dumbbell
+  Shield, Map, Store, HeartPulse, User, LogOut, Crown, Swords, Skull, Book, Gem, Calendar, Coins, Gavel, Trophy, Dumbbell, Bell
 } from 'lucide-react';
 import { calculateDerivedStats } from '../../utils/formulas';
 
 export const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { character, view, changeView, signOut } = useGame();
+  const { character, view, changeView, signOut, pvpAttackNotification, watchPvPBattle, dismissPvPNotification } = useGame();
   const [hoveredHp, setHoveredHp] = useState(false);
   const [hoveredExp, setHoveredExp] = useState(false);
 
@@ -72,6 +72,20 @@ export const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }
                 <Shield className="fill-amber-900/20" />
                 CIENIE ETERU
             </div>
+            {/* PvP Attack Notification Icon */}
+            {pvpAttackNotification && (
+              <button
+                onClick={() => {
+                  watchPvPBattle(pvpAttackNotification.id);
+                  dismissPvPNotification();
+                }}
+                className="relative bg-red-600/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all animate-pulse border-2 border-red-400"
+                title={`${pvpAttackNotification.attacker_name} atakuje Cię! Kliknij, aby oglądać walkę.`}
+              >
+                <Bell size={20} />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-400 rounded-full border-2 border-white"></span>
+              </button>
+            )}
         </div>
 
         {/* RESOURCES */}

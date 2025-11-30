@@ -11,7 +11,7 @@ export const CombatScreen: React.FC = () => {
   const { 
       character, changeView, addLog, gainExp, gainGold, addItem, activeMonsterId, activeMonsterType,
       addCombatLog, isQuickCombat, recordKill, unlockBonus, updateHp, healCharacter,
-      monsters, itemTemplates
+      monsters, itemTemplates, updatePvPBattle
   } = useGame();
   const [monster, setMonster] = useState<Monster | null>(null);
   const [monsterHp, setMonsterHp] = useState(0);
@@ -25,6 +25,7 @@ export const CombatScreen: React.FC = () => {
   
   // Status Effects
   const [monsterDebuffs, setMonsterDebuffs] = useState<{poison: number, burn: number}>({poison: 0, burn: 0});
+  const [currentPvPBattleId, setCurrentPvPBattleId] = useState<string | null>(null);
 
   // Image Error States
   const [playerImgError, setPlayerImgError] = useState(false);
@@ -41,10 +42,24 @@ export const CombatScreen: React.FC = () => {
 
   // Init Battle
   useEffect(() => {
-    if (!character || !activeMonsterId || monsters.length === 0) return;
+    if (!character || !activeMonsterId) return;
+    
+    // For ARENA, allow even if monsters is empty (will retry)
+    if (activeMonsterType !== 'ARENA' && monsters.length === 0) return;
     
     const selectedMonster = monsters.find(m => m.id === activeMonsterId);
     if (!selectedMonster) {
+        // For ARENA, retry once after a short delay
+        if (activeMonsterType === 'ARENA') {
+          const timeout = setTimeout(() => {
+            const retryMonster = monsters.find(m => m.id === activeMonsterId);
+            if (!retryMonster) {
+              addLog("Błąd: Nie znaleziono przeciwnika!");
+              changeView('ARENA');
+            }
+          }, 50);
+          return () => clearTimeout(timeout);
+        }
         addLog("Błąd: Nie znaleziono potwora!");
         changeView('HUB');
         return;
@@ -83,6 +98,24 @@ export const CombatScreen: React.FC = () => {
 
     setIsPlayerTurn(playerStarts);
 
+    // Check if inventory is full and warn
+    const isInventoryFull = (inv: (any | null)[]): boolean => {
+        const padded = [...inv];
+        while (padded.length < 48) padded.push(null);
+        return padded.every(slot => slot !== null);
+    };
+
+    const inventoryFull = isInventoryFull(character.inventory);
+    const initLogs: CombatTurn[] = [];
+    
+    if (inventoryFull) {
+        initLogs.push({
+            attackerId: 'system', defenderId: 'system',
+            action: 'mechanic', damage: 0, isCrit: false,
+            log: '⚠️ UWAGA: Plecak jest pełny! Zdobyte przedmioty mogą przepaść. Zrób miejsce w plecaku!'
+        });
+    }
+
     // Initial Log about Initiative
     const initLog: CombatTurn = {
         attackerId: 'system', defenderId: 'system',
@@ -91,7 +124,7 @@ export const CombatScreen: React.FC = () => {
             ? `Rozpoczynasz walkę! (Twoja SA: ${playerSA} vs ${monsterSA})` 
             : `${selectedMonster.name} jest szybszy i atakuje pierwszy! (SA: ${monsterSA} vs ${playerSA})`
     };
-    setCombatLogs([initLog]);
+    setCombatLogs([...initLogs, initLog]);
 
   }, [activeMonsterId, monsters]);
 
@@ -126,10 +159,14 @@ export const CombatScreen: React.FC = () => {
       );
 
       const monsterSA = getMonsterSA(monster);
+      // Use monster.dodge (capped at 60% in formulas) for PvP, or default 5% for regular monsters
+      const monsterDodge = monster.dodge !== undefined ? Math.min(60, monster.dodge) : 5;
       const monsterStats: DerivedStats = {
-        maxHp: monster.maxHp, armor: monster.defense, dodgeChance: 5, critChance: 5,
+        maxHp: monster.maxHp, armor: monster.armor || monster.defense || 0, dodgeChance: monsterDodge, critChance: 5,
         physDmgMin: monster.damageMin, physDmgMax: monster.damageMax,
-        magDmgMin: 0, magDmgMax: 0, physResist: monster.defense / (monster.defense + 50), magResist: 0,
+        magDmgMin: monster.magicDamageMin || 0, magDmgMax: monster.magicDamageMax || 0, 
+        physResist: (monster.armor || monster.defense || 0) / ((monster.armor || monster.defense || 0) + 50), 
+        magResist: monster.magicResist || 0,
         healingPower: 0, blockChance: 0,
         attackSpeed: monsterSA, initiative: 0, stability: 0, strength: 0, dexterity: 0, intelligence: 0, vitality: 0,
         // Defaults for new required properties
@@ -199,7 +236,9 @@ export const CombatScreen: React.FC = () => {
               }
 
           } else {
-              const result = calculateDamage(monsterStats, playerStats, 'phys');
+              // Determine damage type for monster: use magic for mage/cleric in PvP, otherwise physical
+              const monsterDamageType: 'phys' | 'mag' = (monster.profession === 'mage' || monster.profession === 'cleric') ? 'mag' : 'phys';
+              const result = calculateDamage(monsterStats, playerStats, monsterDamageType);
               currentPlayerHp = Math.max(0, currentPlayerHp - result.damage);
               logs.push({
                 attackerId: 'monster', defenderId: 'player',
@@ -230,12 +269,16 @@ export const CombatScreen: React.FC = () => {
         character.boughtStats
     );
     
+    // Use monster.dodge (capped at 60% in formulas) for PvP, or default 5% for regular monsters
+    const monsterDodge = monster.dodge !== undefined ? Math.min(60, monster.dodge) : 5;
     const monsterStats: DerivedStats = {
-      maxHp: monster.maxHp, armor: monster.defense, dodgeChance: 5, critChance: 5,
+      maxHp: monster.maxHp, armor: monster.armor || monster.defense || 0, dodgeChance: monsterDodge, critChance: 5,
       physDmgMin: monster.damageMin, physDmgMax: monster.damageMax,
-      magDmgMin: 0, magDmgMax: 0, physResist: monster.defense / (monster.defense + 50), magResist: 0,
+      magDmgMin: monster.magicDamageMin || 0, magDmgMax: monster.magicDamageMax || 0, 
+      physResist: (monster.armor || monster.defense || 0) / ((monster.armor || monster.defense || 0) + 50), 
+      magResist: monster.magicResist || 0,
       healingPower: 0, blockChance: 0,
-      attackSpeed: 0, initiative: 0, stability: 0, strength: 0, dexterity: 0, intelligence: 0, vitality: 0,
+      attackSpeed: monster.sa || 0, initiative: 0, stability: 0, strength: 0, dexterity: 0, intelligence: 0, vitality: 0,
       critDamage: 150, armorPen: 0, magicPen: 0, piercingDamage: 0,
         hpRegen: 0, reducedDamage: 0, manaShield: 0, bonusGold: 0, bonusExp: 0, dropChance: 0,
         damageVsUndead: 0, damageVsBeast: 0, damageVsDemon: 0,
@@ -308,7 +351,9 @@ export const CombatScreen: React.FC = () => {
         }
 
         // Then Monster Attacks
-        const result = calculateDamage(monsterStats, playerStats, 'phys');
+        // Determine damage type for monster: use magic for mage/cleric in PvP, otherwise physical
+        const monsterDamageType: 'phys' | 'mag' = (monster.profession === 'mage' || monster.profession === 'cleric') ? 'mag' : 'phys';
+        const result = calculateDamage(monsterStats, playerStats, monsterDamageType);
         const newPlayerHp = Math.max(0, playerHp - result.damage);
         setPlayerHp(newPlayerHp);
 
@@ -345,6 +390,25 @@ export const CombatScreen: React.FC = () => {
               const run = JSON.parse(dungeonRunStr);
               localStorage.setItem('active_dungeon_run', JSON.stringify({ ...run, status: 'COMPLETED' }));
           } catch(e) {}
+      }
+
+      // PvP ARENA: No rewards
+      if (activeMonsterType === 'ARENA') {
+        setRewards({
+          exp: 0,
+          gold: 0,
+          loot: undefined
+        });
+
+        addCombatLog({
+          enemy_name: monster.name,
+          result: 'WIN',
+          exp_gained: 0,
+          gold_gained: 0,
+          type: 'ARENA',
+          logs: finalLogs
+        });
+        return;
       }
 
       // 1. EXP Calculation
@@ -419,7 +483,7 @@ export const CombatScreen: React.FC = () => {
               result: 'LOSS',
               exp_gained: 0,
               gold_gained: 0,
-              type: 'EXPEDITION',
+              type: activeMonsterType || 'EXPEDITION',
               logs: finalLogs
           });
       }
@@ -559,9 +623,15 @@ export const CombatScreen: React.FC = () => {
         )}
 
         <div className="flex gap-4 pr-2 text-right">
-            <span>Unik: <span className="text-green-400 font-mono text-xs">5%</span></span>
+            <span>Unik: <span className="text-green-400 font-mono text-xs">
+              {monster.dodge !== undefined ? `${Math.min(60, monster.dodge).toFixed(1)}%` : '5%'}
+            </span></span>
             <span>SA: <span className="text-red-400 font-mono text-xs">{monsterSA}</span></span>
-            <span>DMG: <span className="text-red-500 font-mono text-xs">{monster.damageMin}-{monster.damageMax}</span></span>
+            <span>DMG: <span className="text-red-500 font-mono text-xs">
+                {(monster.profession === 'mage' || monster.profession === 'cleric')
+                    ? `${monster.magicDamageMin}-${monster.magicDamageMax}`
+                    : `${monster.damageMin}-${monster.damageMax}`}
+            </span></span>
         </div>
       </div>
 

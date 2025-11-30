@@ -6,7 +6,7 @@ import { ItemTooltip } from './ItemTooltip';
 import { ItemIcon } from './ItemIcon';
 
 export const AuctionHouseScreen: React.FC = () => {
-    const { character, user, view, fetchMarketListings, createMarketListing, buyMarketListing, cancelMarketListing, marketListings, payGold, addLog } = useGame();
+    const { character, user, view, fetchMarketListings, createMarketListing, buyMarketListing, cancelMarketListing, marketListings, payGold, addLog, showToast } = useGame();
     
     const [activeTab, setActiveTab] = useState<'MARKET' | 'MY_OFFERS'>('MARKET');
     const [hoveredItem, setHoveredItem] = useState<{ item: Item, rect: DOMRect } | null>(null);
@@ -37,6 +37,13 @@ export const AuctionHouseScreen: React.FC = () => {
         const price = parseInt(priceInput);
         if (isNaN(price) || price <= 0) {
             addLog("Nieprawidłowa cena.");
+            return;
+        }
+        
+        // Maximum price limit: 5,000,000
+        const MAX_PRICE = 5000000;
+        if (price > MAX_PRICE) {
+            addLog(`Maksymalna cena to ${MAX_PRICE.toLocaleString()} złota (5 milionów).`);
             return;
         }
         
@@ -243,24 +250,57 @@ export const AuctionHouseScreen: React.FC = () => {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Cena (Złoto)</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                                        Cena (Złoto) 
+                                        <span className="text-amber-500 ml-2">Max: 5,000,000</span>
+                                    </label>
                                     <div className="relative">
                                         <input 
-                                            type="number" 
+                                            type="text" 
                                             value={priceInput}
-                                            onChange={(e) => setPriceInput(e.target.value)}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/[^0-9]/g, ''); // Only numbers
+                                                if (val === '') {
+                                                    setPriceInput('');
+                                                    return;
+                                                }
+                                                const num = parseInt(val, 10);
+                                                if (!isNaN(num) && num >= 0) {
+                                                    if (num <= 5000000) {
+                                                        setPriceInput(val);
+                                                    } else {
+                                                        setPriceInput('5000000');
+                                                        showToast('Maksymalna cena to 5,000,000 złota', 'error');
+                                                    }
+                                                }
+                                            }}
+                                            onBlur={(e) => {
+                                                const num = parseInt(e.target.value, 10);
+                                                if (!isNaN(num) && num > 5000000) {
+                                                    setPriceInput('5000000');
+                                                    showToast('Maksymalna cena to 5,000,000 złota', 'error');
+                                                }
+                                            }}
                                             className="w-full bg-[#0b0d10] border border-white/10 rounded py-2 pl-8 pr-4 text-amber-500 font-mono font-bold focus:border-amber-500 focus:outline-none"
                                             placeholder="0"
                                         />
                                         <Coins size={14} className="absolute left-2.5 top-3 text-slate-500" />
                                     </div>
+                                    {priceInput && parseInt(priceInput) > 5000000 && (
+                                        <div className="text-[10px] text-red-400 mt-1 px-1">
+                                            Maksymalna cena to 5,000,000 złota
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="text-xs text-slate-500 flex justify-between px-1">
+                                <div className="text-xs text-slate-500 flex justify-between px-1 mb-1">
                                     <span>Prowizja (5%):</span>
                                     <span className="text-red-400 font-mono">
-                                        {priceInput ? Math.ceil(parseInt(priceInput) * 0.05) : 0} g
+                                        {priceInput ? Math.ceil(Math.min(parseInt(priceInput) || 0, 5000000) * 0.05) : 0} g
                                     </span>
+                                </div>
+                                <div className="text-[10px] text-amber-500/80 text-center px-1 mb-2 bg-amber-900/20 py-1 rounded border border-amber-900/30">
+                                    ⚠️ Maksymalna cena: <span className="font-bold">5,000,000 złota</span>
                                 </div>
 
                                 <button 

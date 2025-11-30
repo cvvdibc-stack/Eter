@@ -21,7 +21,7 @@ const StatRow: React.FC<{ label: string, value: string | number, rawValue?: numb
         </div>
         
         {/* Enhanced Tooltip */}
-        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-64 bg-black/95 p-3 text-xs text-slate-300 rounded-lg border border-slate-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-64 bg-black/95 p-3 text-xs text-slate-300 rounded-lg border border-slate-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[9999] shadow-xl">
             <div className="font-bold text-white mb-2 border-b border-white/10 pb-1 uppercase tracking-wider">{label}</div>
             {desc && <div className="text-slate-400 italic mb-3">{desc}</div>}
             
@@ -195,7 +195,7 @@ export const InventoryScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col lg:flex-row justify-center gap-8 h-[calc(100vh-140px)] overflow-hidden p-4 lg:p-6 max-w-7xl mx-auto">
+    <div className="flex flex-col lg:flex-row justify-center gap-8 h-[calc(100vh-140px)] overflow-visible p-4 lg:p-6 max-w-7xl mx-auto">
       
       {/* LEFT COLUMN: Avatar & Stats */}
       <div className="w-full lg:w-[340px] flex flex-col gap-4 h-full min-h-0">
@@ -225,7 +225,7 @@ export const InventoryScreen: React.FC = () => {
         </div>
 
         {/* Stats Panel */}
-        <div className="flex-1 bg-[#161b22] border-2 border-white/10 p-4 rounded-xl shadow-lg flex flex-col gap-2 overflow-hidden z-20">
+        <div className="flex-1 bg-[#161b22] border-2 border-white/10 p-4 rounded-xl shadow-lg flex flex-col gap-2 overflow-visible z-20">
             <div>
                 <div className="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
                     <h3 className="text-xs text-slate-500 uppercase font-bold">Statystyki</h3>

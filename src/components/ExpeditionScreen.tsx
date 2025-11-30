@@ -5,7 +5,7 @@ import { BonusType } from '../types';
 import { getMonsterSrc } from '../utils/assets';
 
 export const ExpeditionScreen: React.FC = () => {
-  const { startCombat, startQuickCombat, unlockedMonsters, character, monsters, globalToast } = useGame();
+  const { startCombat, startQuickCombat, unlockedMonsters, character, monsters, globalToast, showToast } = useGame();
   const [page, setPage] = useState(0);
 
   // Initial page calculation based on progression or saved state
@@ -203,13 +203,28 @@ export const ExpeditionScreen: React.FC = () => {
                   {isUnlocked ? (
                       <>
                         <button 
-                            onClick={() => startCombat(monster.id, 'EXPEDITION')}
+                            onClick={() => {
+                                // Check if inventory is full
+                                const isInventoryFull = character.inventory.filter(i => i !== null).length >= 48;
+                                if (isInventoryFull) {
+                                    // Show warning but allow combat
+                                    showToast("⚠️ Plecak pełny! Zdobyte przedmioty mogą przepaść.", 'error');
+                                }
+                                startCombat(monster.id, 'EXPEDITION');
+                            }}
                             className="py-2 bg-gradient-to-b from-amber-700 to-amber-800 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded border-t border-amber-500 shadow-lg text-xs uppercase tracking-widest flex items-center justify-center gap-1 transform active:scale-95 transition-all"
                         >
                             <Sword size={14} /> Atak
                         </button>
                         <button 
-                            onClick={() => startQuickCombat(monster.id)}
+                            onClick={() => {
+                                // Check if inventory is full
+                                const isInventoryFull = character.inventory.filter(i => i !== null).length >= 48;
+                                if (isInventoryFull) {
+                                    showToast("⚠️ Plecak pełny! Zdobyte przedmioty mogą przepaść.", 'error');
+                                }
+                                startQuickCombat(monster.id);
+                            }}
                             className="py-2 bg-[#1a1d24] hover:bg-[#2a2e38] text-slate-300 font-bold rounded border border-slate-600 text-xs uppercase tracking-widest flex items-center justify-center gap-1 transform active:scale-95 transition-all"
                         >
                             <Zap size={14} className="text-yellow-500" /> Szybka

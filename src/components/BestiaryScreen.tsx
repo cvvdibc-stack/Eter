@@ -184,22 +184,28 @@ export const BestiaryScreen: React.FC = () => {
                                 <div className="mt-4 grid grid-cols-2 gap-2">
                                     <div className="p-2 border border-slate-700/50 bg-slate-800/20 rounded text-center">
                                         <div className="text-xs text-slate-500 uppercase font-bold">Pospolity</div>
-                                        <div className="text-slate-300 font-mono">{selectedMonster.lootTable.rarity.common}%</div>
+                                        <div className="text-slate-300 font-mono">
+                                            {selectedMonster.lootTable?.rarity?.common ?? 0}%
+                                        </div>
                                     </div>
                                     <div className="p-2 border border-yellow-900/50 bg-yellow-900/10 rounded text-center">
                                         <div className="text-xs text-yellow-600 uppercase font-bold">Unikat</div>
-                                        <div className="text-yellow-400 font-mono">{selectedMonster.lootTable.rarity.unique}%</div>
+                                        <div className="text-yellow-400 font-mono">
+                                            {selectedMonster.lootTable?.rarity?.unique ?? 0}%
+                                        </div>
                                     </div>
                                     <div className="p-2 border border-blue-900/50 bg-blue-900/10 rounded text-center">
                                         <div className="text-xs text-blue-600 uppercase font-bold">Heroiczny</div>
-                                        <div className="text-blue-400 font-mono">{selectedMonster.lootTable.rarity.heroic}%</div>
+                                        <div className="text-blue-400 font-mono">
+                                            {selectedMonster.lootTable?.rarity?.heroic ?? 0}%
+                                        </div>
                                     </div>
                                     {/* Legend visible only for lvl 10+ monsters */}
                                     {selectedMonster.level >= 10 ? (
                                         <div className="p-2 border border-orange-900/50 bg-orange-900/10 rounded text-center">
                                             <div className="text-xs text-orange-600 uppercase font-bold">Legenda</div>
                                             <div className="text-orange-400 font-mono">
-                                                {selectedMonster.lootTable.rarity.legendary}%
+                                                {selectedMonster.lootTable?.rarity?.legendary ?? 0}%
                                             </div>
                                         </div>
                                     ) : (

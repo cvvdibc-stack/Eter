@@ -306,6 +306,12 @@ export const generateItem = (
         allowed.splice(allowed.indexOf(stat), 1);
     }
 
+    // Ensure rings and amulets have at least one bonus stat
+    if (['ring', 'amulet'].includes(type) && bonusStats.length === 0 && allowed.length > 0) {
+        const stat = pick(allowed);
+        bonusStats.push(stat);
+    }
+
     /* ----------------- 5. CALCULATE VALUES ---------------- */
     const stats: ItemStats = {};
     const multiplier = RARITY_MULTIPLIER[rarity] * statsMultiplier; // Apply Shop Multiplier
@@ -460,6 +466,68 @@ export const generateItem = (
 
     implicit.forEach(s => applyStat(s, true));
     bonusStats.forEach(s => applyStat(s, false));
+
+    /* ----------------- 5.5. FIX DAMAGE RANGES ----------------- */
+    // Ensure damageMin <= damageMax
+    if (stats.damageMin && stats.damageMax) {
+        if (stats.damageMin > stats.damageMax) {
+            // Swap if min > max
+            const temp = stats.damageMin;
+            stats.damageMin = stats.damageMax;
+            stats.damageMax = temp;
+        }
+        // Ensure at least 1 point difference
+        if (stats.damageMin === stats.damageMax) {
+            stats.damageMax = stats.damageMin + 1;
+        }
+    }
+
+    /* ----------------- 5.6. ENSURE MINIMUM STATS ----------------- */
+    // Ensure every item has at least one stat
+    const hasAnyStat = Object.keys(stats).length > 0;
+    if (!hasAnyStat) {
+        // Fallback: add a basic stat based on type
+        if (type === 'weapon') {
+            if (profession === 'mage' || profession === 'cleric') {
+                stats.magicDamage = Math.max(1, Math.floor(level * 1.5 * multiplier));
+            } else {
+                const baseDmg = Math.floor(level * 1.5 * multiplier);
+                stats.damageMin = baseDmg;
+                stats.damageMax = baseDmg + Math.floor(level * 0.5 * multiplier);
+            }
+        } else if (['armor', 'helmet', 'boots', 'gloves'].includes(type)) {
+            const baseArmorRange = STAT_RANGES.ARMOR(level);
+            const classMul = ARMOR_CLASS_MULTIPLIER[profession];
+            const slotMul = ARMOR_SLOT_MULTIPLIER[type] || 1.0;
+            const baseVal = rand(baseArmorRange[0], baseArmorRange[1]);
+            stats.armor = Math.max(1, Math.floor(baseVal * multiplier * classMul * slotMul));
+        } else if (type === 'shield') {
+            if (profession === 'assassin') {
+                const baseDmg = Math.floor(level * 1.2 * multiplier);
+                stats.damageMin = baseDmg;
+                stats.damageMax = baseDmg + Math.floor(level * 0.4 * multiplier);
+            } else if (profession === 'mage') {
+                stats.magicDamage = Math.max(1, Math.floor(level * 1.3 * multiplier));
+            } else {
+                const baseArmorRange = STAT_RANGES.ARMOR(level);
+                const classMul = ARMOR_CLASS_MULTIPLIER[profession];
+                const slotMul = ARMOR_SLOT_MULTIPLIER.shield || 1.0;
+                const baseVal = rand(baseArmorRange[0], baseArmorRange[1]);
+                stats.armor = Math.max(1, Math.floor(baseVal * multiplier * classMul * slotMul));
+            }
+        } else if (['ring', 'amulet'].includes(type)) {
+            // Rings and amulets must have at least one bonus stat
+            const fallbackStats = ['strength', 'dexterity', 'intelligence', 'vitality', 'hp', 'critChance', 'dodgeChance'];
+            const availableFallback = fallbackStats.filter(s => 
+                CLASS_MATRIX[profession].allowed.includes(s as keyof ItemStats) &&
+                !CLASS_MATRIX[profession].forbidden.includes(s as keyof ItemStats)
+            );
+            if (availableFallback.length > 0) {
+                const fallbackStat = pick(availableFallback) as keyof ItemStats;
+                applyStat(fallbackStat, false);
+            }
+        }
+    }
 
     /* ----------------- 6. NAME ------------------------------ */
     let baseName = 'Przedmiot';

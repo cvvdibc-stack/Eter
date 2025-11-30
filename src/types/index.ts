@@ -188,7 +188,7 @@ export interface Character {
   completed_dungeons?: string[]; 
   unlocked_bonuses?: Record<string, BonusType[]>;
   dungeon_progress?: Record<string, number>; 
-  kill_stats?: Record<string, number>;
+  kill_stats?: Record<string, number>; 
   lockedItems?: string[]; // Lista ID zablokowanych itemów (nie można sprzedać)
 }
 
@@ -275,6 +275,7 @@ export interface Monster {
   type: 'normal' | 'elite' | 'boss' | 'animal' | 'humanoid' | 'undead' | 'demon'; 
   description?: string;
   mechanics?: BossMechanic[]; 
+  profession?: Profession; // For PvP monsters (converted from Character)
 }
 
 export interface Dungeon {
@@ -294,4 +295,22 @@ export interface MarketListing {
     price: number;
     created_at: string;
     expires_at: string;
+}
+
+export interface PvPBattle {
+    id: string;
+    attacker_id: string;
+    defender_id: string;
+    attacker_name: string;
+    defender_name: string;
+    status: 'active' | 'completed' | 'cancelled';
+    winner_id?: string;
+    battle_logs: CombatTurn[];
+    attacker_hp: number;
+    defender_hp: number;
+    attacker_max_hp: number;
+    defender_max_hp: number;
+    turn_count: number;
+    created_at: string;
+    updated_at: string;
 }

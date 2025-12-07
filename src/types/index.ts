@@ -138,12 +138,20 @@ export interface Item {
   rarity: ItemRarity;
   stats: ItemStats;
   value: number;
-  icon: string; 
+  icon: string;
   levelReq: number;
   classReq?: Profession;
-  upgradeLevel: number; 
+  upgradeLevel: number;
   bonusEffects?: string[];
+<<<<<<< HEAD
   setName?: string; // Set name for set items
+=======
+  slainBy?: {
+    playerName: string;
+    bossName: string;
+    date: string; // ISO date string
+  };
+>>>>>>> from-new
 }
 
 export interface TalismanDef {
@@ -225,6 +233,7 @@ export interface LootTable {
   };
   talisman?: number; // % Chance for talisman drop
   expMultiplier?: number; // New field for Boss XP boost
+  signatureSlots?: ItemType[]; // Boss-specific signature slots (e.g., ['helmet', 'gloves'])
   legends: {
     warrior: string;
     assassin: string;
@@ -299,6 +308,7 @@ export interface MarketListing {
     expires_at: string;
 }
 
+<<<<<<< HEAD
 export interface PvPBattle {
     id: string;
     attacker_id: string;
@@ -315,4 +325,10 @@ export interface PvPBattle {
     turn_count: number;
     created_at: string;
     updated_at: string;
+=======
+export interface AccountStash {
+    user_id: string;
+    items: (Item | null)[];
+    updated_at?: string;
+>>>>>>> from-new
 }

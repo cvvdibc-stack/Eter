@@ -1,5 +1,6 @@
 import { Item, ItemRarity, ItemStats, ItemType, Profession } from '../types';
 
+<<<<<<< HEAD
 /* ==========================================================================
    KONFIGURACJA: BALANS I ZAKRESY STATYSTYK
    ========================================================================== */
@@ -28,6 +29,34 @@ const STAT_RANGES = {
     STABILITY: (_lvl: number) => [1, 5],
     POISON: (_lvl: number) => [5, 15],
     BURN: (_lvl: number) => [5, 15],
+=======
+/* --------------------------- CONFIG: BASE STAT VALUES --------------------------- */
+// Fixed base values (no more wide ranges) - semi-random will add ±variance
+const STAT_BASE_VALUES = {
+    PRIMARY: (lvl: number) => lvl * 1.5,
+    DAMAGE: (lvl: number) => lvl * 1.4,
+    MAGIC_DMG: (lvl: number) => lvl * 1.8,
+    ARMOR: (lvl: number) => lvl * 1.2,
+    HP: (lvl: number) => lvl * 10,
+    VITALITY: (lvl: number) => lvl * 1.2,
+    PERCENT_SMALL: () => 3,
+    PERCENT_MED: () => 7,
+    PERCENT_BIG: () => 11,
+    FLAT_SMALL: (lvl: number) => lvl * 0.8,
+    FLAT_MED: (lvl: number) => lvl * 1.5,
+    INITIATIVE: () => 3,
+    STABILITY: () => 2,
+    POISON: () => 12,
+    BURN: () => 12,
+};
+
+/* --------------------------- CONFIG: CONTROLLED VARIANCE --------------------------- */
+// Variance for semi-random generation (legendary/mythic use fixed database)
+const CONTROLLED_VARIANCE = {
+    common: { min: 0.95, max: 1.05 },    // ±5%
+    unique: { min: 0.92, max: 1.08 },    // ±8%
+    heroic: { min: 0.90, max: 1.10 }     // ±10%
+>>>>>>> from-new
 };
 
 /* --- KONFIGURACJA: RZADKOŚĆ (RARITY) --- */
@@ -40,6 +69,7 @@ const RARITY_CONFIG = {
     talisman:   { bonuses: 1, statMult: 1.0,  priceMult: 2.0 }
 };
 
+<<<<<<< HEAD
 /* --- KONFIGURACJA: ZESTAWY (SETS) --- */
 // Szansa na wylosowanie setu dla rzadkości: Heroic(15%), Legendary(30%), Mythic(50%)
 const ITEM_SETS: Record<Profession, string[]> = {
@@ -47,6 +77,15 @@ const ITEM_SETS: Record<Profession, string[]> = {
     assassin: ['Cienie Nocy', 'Szaty Krwawego Księżyca', 'Ekwipunek Skrytobójcy'],
     mage: ['Szaty Arcymaga', 'Zestaw Feniksa', 'Tajemnice Pustki'],
     cleric: ['Szaty Świętego', 'Pancerz Paladyna', 'Światło Nadziei']
+=======
+const RARITY_MULTIPLIER = {
+    common: 1.0,
+    unique: 1.4,
+    heroic: 1.9,
+    legendary: 3.5,  // Legendary/Mythic should use fixed database, but keeping for fallback
+    mythic: 8.0,
+    talisman: 1.0
+>>>>>>> from-new
 };
 
 /* ==========================================================================
@@ -164,6 +203,29 @@ const STAT_SLOT_PENALTY: Record<string, Record<string, number>> = {
 /* Helper Functions */
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pick = <T>(arr: T[]) => arr[rand(0, arr.length - 1)];
+<<<<<<< HEAD
+=======
+
+// New function: Apply controlled variance to base values
+const getStatValue = (
+    baseValue: number,
+    multiplier: number,
+    rarity: ItemRarity
+): number => {
+    const variance = CONTROLLED_VARIANCE[rarity as keyof typeof CONTROLLED_VARIANCE];
+
+    if (!variance) {
+        // Legendary/Mythic/Talisman - no variance (should use fixed database)
+        return Math.floor(baseValue * multiplier);
+    }
+
+    // Common/Unique/Heroic - apply controlled variance
+    const randomFactor = variance.min + Math.random() * (variance.max - variance.min);
+    return Math.floor(baseValue * multiplier * randomFactor);
+};
+
+// Legacy function for compatibility (deprecated - use getStatValue)
+>>>>>>> from-new
 const getRangeValue = (range: number[] | number, mult: number) => {
     if (Array.isArray(range)) return Math.floor(rand(range[0], range[1]) * mult);
     return Math.floor(range * mult);
@@ -283,7 +345,11 @@ export const generateItem = (
     const finalMult = config.statMult * shopMultiplier;
 
     const applyStat = (stat: keyof ItemStats, isImplicit: boolean) => {
+<<<<<<< HEAD
         let val = 0;
+=======
+        let baseValue: number;
+>>>>>>> from-new
         let isPercent = false;
 
         // Specjalna logika dla Armora (zależna od klasy i slotu)
@@ -321,6 +387,7 @@ export const generateItem = (
 
         // Mapowanie statystyk na zakresy
         switch (stat) {
+<<<<<<< HEAD
             case 'strength': 
             case 'dexterity': 
             case 'intelligence': 
@@ -378,11 +445,113 @@ export const generateItem = (
                 isPercent = true; 
                 break;
 
+=======
+            case 'strength':
+            case 'dexterity':
+            case 'intelligence':
+                baseValue = STAT_BASE_VALUES.PRIMARY(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
+
+            case 'damageMin':
+            case 'damageMax':
+                baseValue = STAT_BASE_VALUES.DAMAGE(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
+
+            case 'magicDamage':
+                baseValue = STAT_BASE_VALUES.MAGIC_DMG(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
+
+            case 'armor':
+                baseValue = STAT_BASE_VALUES.ARMOR(level);
+                const classMul = ARMOR_CLASS_MULTIPLIER[profession];
+                const slotMul = ARMOR_SLOT_MULTIPLIER[type] || 1.0;
+
+                // If armor is bonus on non-armor slot (e.g. Ring), reduce it heavily
+                let bonusMalus = 1.0;
+                if (!isImplicit && !['armor', 'helmet', 'boots', 'gloves', 'shield'].includes(type)) {
+                    bonusMalus = 0.2;
+                }
+
+                const finalArmor = getStatValue(baseValue, multiplier * classMul * slotMul * bonusMalus, rarity);
+                stats[stat] = Math.max(1, finalArmor);
+                return;
+
+            case 'hp':
+                baseValue = STAT_BASE_VALUES.HP(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
+
+            case 'vitality':
+            case 'healingPower':
+                baseValue = STAT_BASE_VALUES.VITALITY(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
+
+            case 'critChance':
+            case 'dodgeChance':
+            case 'magicResist':
+            case 'blockChance':
+                baseValue = STAT_BASE_VALUES.PERCENT_MED();
+                isPercent = true;
+                break;
+
+            case 'critDamage':
+                baseValue = 17; // Base 17% (range was 10-25)
+                isPercent = true;
+                break;
+
+            case 'piercingDamage':
+                baseValue = STAT_BASE_VALUES.FLAT_MED(level);
+                break;
+
+            case 'armorPen':
+            case 'magicPen':
+                baseValue = STAT_BASE_VALUES.PERCENT_MED();
+                isPercent = true;
+                break;
+
+            case 'reducedDamage':
+                baseValue = STAT_BASE_VALUES.PERCENT_SMALL();
+                isPercent = true;
+                break;
+
+            case 'hpRegen':
+                baseValue = 2.5; // Base 2.5%
+                isPercent = true;
+                break;
+
+            case 'attackSpeed':
+                baseValue = 3; // Base 3 SA
+                break;
+
+            case 'initiative':
+                baseValue = STAT_BASE_VALUES.INITIATIVE();
+                break;
+
+            case 'stability':
+                baseValue = STAT_BASE_VALUES.STABILITY();
+                break;
+
+            case 'poisonChance':
+                baseValue = STAT_BASE_VALUES.POISON();
+                isPercent = true;
+                break;
+
+            case 'burnChance':
+                baseValue = STAT_BASE_VALUES.BURN();
+                isPercent = true;
+                break;
+
+>>>>>>> from-new
             // Flags
             case 'firstHitShield': 
             case 'sanctifiedAura': 
                 stats[stat] = 1; 
                 return;
+<<<<<<< HEAD
             case 'overload': 
             case 'bloodFury': 
                 val = getRangeValue([5, 15], finalMult); 
@@ -403,6 +572,50 @@ export const generateItem = (
         // Kary za slot (np. dmg na ringu)
         if (!isImplicit && STAT_SLOT_PENALTY[type]?.[stat]) {
             val = Math.floor(val * STAT_SLOT_PENALTY[type][stat]);
+=======
+
+            case 'overload':
+            case 'bloodFury':
+            case 'etherealVeil':
+            case 'unbreakable':
+                baseValue = 10; // Base 10%
+                isPercent = true;
+                break;
+
+            // Utility
+            case 'bonusGold':
+            case 'bonusExp':
+            case 'dropChance':
+                baseValue = STAT_BASE_VALUES.PERCENT_SMALL();
+                isPercent = true;
+                break;
+
+            case 'blockValue':
+                baseValue = STAT_BASE_VALUES.FLAT_MED(level);
+                break;
+
+            case 'manaShield':
+                baseValue = STAT_BASE_VALUES.PERCENT_MED();
+                isPercent = true;
+                break;
+
+            case 'damageVsUndead':
+            case 'damageVsBeast':
+            case 'damageVsDemon':
+                baseValue = STAT_BASE_VALUES.PERCENT_BIG();
+                isPercent = true;
+                break;
+
+            default:
+                baseValue = 2; // Fallback base value
+        }
+
+        let val = getStatValue(baseValue, multiplier, rarity);
+        
+        // Apply Slot Specific Multiplier for Stats (e.g. reduced Damage on Rings)
+        if (!isImplicit && STAT_SLOT_MULTIPLIER[type] && STAT_SLOT_MULTIPLIER[type][stat]) {
+            val = Math.floor(val * STAT_SLOT_MULTIPLIER[type][stat]);
+>>>>>>> from-new
         }
 
         // Caps (Limity)

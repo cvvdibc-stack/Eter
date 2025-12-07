@@ -1,26 +1,34 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+<<<<<<< HEAD
 import { Character, Profession, Item, ItemType, CombatLog, BonusType, Monster, MarketListing, PvPBattle, CombatTurn } from '../types';
+=======
+import { Character, Profession, Item, ItemType, CombatLog, BonusType, Monster, MarketListing, AccountStash } from '../types';
+>>>>>>> from-new
 import { PROFESSIONS } from '../data/professions';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { XP_TO_NEXT_LEVEL, calculateDerivedStats, calculateMaxTrainableStat, getStatsForLevel } from '../utils/formulas';
 import { generateItem } from '../utils/itemGenerator';
 
+<<<<<<< HEAD
 type GameView = 'AUTH' | 'LANDING' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING' | 'TRAINER';
+=======
+type GameView = 'AUTH' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING' | 'TRAINER' | 'STASH';
+>>>>>>> from-new
 
 interface GameState {
   user: User | null;
   session: Session | null;
   character: Character | null;
-  myCharacters: Character[]; 
+  myCharacters: Character[];
   view: GameView;
   logs: string[];
   isLoading: boolean;
   unlockedMonsters: string[];
   activeMonsterId: string | null;
-  activeMonsterType: 'EXPEDITION' | 'DUNGEON' | 'ARENA' | null; 
-  killedMonsters: Record<string, number>; 
-  combatHistory: CombatLog[]; 
+  activeMonsterType: 'EXPEDITION' | 'DUNGEON' | 'ARENA' | null;
+  killedMonsters: Record<string, number>;
+  combatHistory: CombatLog[];
   isQuickCombat: boolean;
   merchantInventory: Item[];
   monsters: Monster[];
@@ -28,6 +36,7 @@ interface GameState {
   marketListings: MarketListing[];
   globalWarning: string | null;
   globalToast: { message: string, type: 'error' | 'success' | 'info' } | null;
+  accountStash: (Item | null)[];
 }
 
 interface GameContextType extends GameState {
@@ -74,6 +83,7 @@ interface GameContextType extends GameState {
 
   loadRanking: () => Promise<any[]>;
   trainStat: (stat: 'strength' | 'dexterity' | 'vitality' | 'intelligence') => Promise<void>;
+<<<<<<< HEAD
   
   // Item Locking
   lockItem: (itemId: string) => void;
@@ -92,6 +102,13 @@ interface GameContextType extends GameState {
   activePvPBattle: PvPBattle | null;
   pvpAttackNotification: PvPBattle | null;
   dismissPvPNotification: () => void;
+=======
+
+  // Account Stash
+  moveToStash: (inventoryIndex: number) => void;
+  moveFromStash: (stashIndex: number) => void;
+  moveStashItem: (fromIndex: number, toIndex: number) => void;
+>>>>>>> from-new
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -116,8 +133,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [marketListings, setMarketListings] = useState<MarketListing[]>([]);
   const [globalWarning, setGlobalWarning] = useState<string | null>(null);
   const [globalToast, setGlobalToast] = useState<{ message: string, type: 'error' | 'success' | 'info' } | null>(null);
+<<<<<<< HEAD
   const [activePvPBattle, setActivePvPBattle] = useState<PvPBattle | null>(null);
   const [pvpAttackNotification, setPvpAttackNotification] = useState<PvPBattle | null>(null);
+=======
+  const [accountStash, setAccountStash] = useState<(Item | null)[]>(Array(96).fill(null)); // 96 slots for stash
+>>>>>>> from-new
 
   // ... (useEffect logic remains same, truncated for brevity if possible, but writing full file to be safe)
   // Load Game Data (Monsters & Items)
@@ -243,6 +264,78 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [character, view]);
 
 
+  // Load Account Stash
+  useEffect(() => {
+    const loadStash = async () => {
+      if (!user) {
+        setAccountStash(Array(96).fill(null));
+        return;
+      }
+
+      if (user.id === 'demo-user') {
+        // Demo mode - load from localStorage
+        const demoStash = localStorage.getItem('demo_stash');
+        if (demoStash) {
+          const parsed = JSON.parse(demoStash);
+          setAccountStash(parsed);
+        } else {
+          setAccountStash(Array(96).fill(null));
+        }
+        return;
+      }
+
+      // Real user - load from Supabase
+      const { data, error } = await supabase
+        .from('account_stash')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = not found, which is OK for first time
+        console.error("Error loading stash:", error);
+        return;
+      }
+
+      if (data && data.items) {
+        // Ensure 96 slots
+        const items = [...data.items];
+        while (items.length < 96) items.push(null);
+        setAccountStash(items);
+      } else {
+        setAccountStash(Array(96).fill(null));
+      }
+    };
+
+    loadStash();
+  }, [user]);
+
+  // Auto-save Account Stash
+  useEffect(() => {
+    if (!user) return;
+
+    const saveStash = async () => {
+      if (user.id === 'demo-user') {
+        localStorage.setItem('demo_stash', JSON.stringify(accountStash));
+        return;
+      }
+
+      // Real user - save to Supabase
+      const { error } = await supabase
+        .from('account_stash')
+        .upsert({
+          user_id: user.id,
+          items: accountStash,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) console.error("Stash auto-save error:", error);
+    };
+
+    const timeout = setTimeout(saveStash, 2000);
+    return () => clearTimeout(timeout);
+  }, [accountStash, user]);
+
   // Inicjalizacja sesji i odtwarzanie stanu
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -264,6 +357,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setView('AUTH');
         setMyCharacters([]);
         setCharacter(null);
+        setAccountStash(Array(96).fill(null));
         localStorage.removeItem('last_char_id');
       }
     });
@@ -1256,7 +1350,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const trainStat = async (stat: 'strength' | 'dexterity' | 'vitality' | 'intelligence') => {
       if (!character || !user) return;
       const currentBonus = (character.boughtStats as any)?.[`${stat}_bonus`] || 0;
-      
+
       // New Limit Logic
       const baseStat = character.baseStats[stat];
       const currentTotal = baseStat + currentBonus;
@@ -1267,17 +1361,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           showToast(`Limit treningu osiągnięty! Awansuj, aby zwiększyć limit.`, 'info');
           return;
       }
-      
+
       const cost = Math.floor(10 * Math.pow(currentBonus, 2));
       if (currentBonus === 0 && cost === 0) {
           // Edge case if bonus is 0, cost is 0? Formula says 10 * 0^2 = 0.
-          // Previous logic had "if (bonus === 0) cost = 50". 
-          // Let's check previous code... 
-          // Wait, the previous code had `const cost = Math.floor(10 * Math.pow(currentBonus, 2));` 
-          // And `if (currentBonus === 0) cost = 50;` was in TrainerScreen, not here? 
+          // Previous logic had "if (bonus === 0) cost = 50".
+          // Let's check previous code...
+          // Wait, the previous code had `const cost = Math.floor(10 * Math.pow(currentBonus, 2));`
+          // And `if (currentBonus === 0) cost = 50;` was in TrainerScreen, not here?
           // No, it was in GameContext too. Let's add base cost for 0.
       }
-      
+
       let finalCost = cost;
       if (currentBonus === 0) finalCost = 50;
 
@@ -1285,18 +1379,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           addLog(`Koszt treningu: ${finalCost} złota. Nie stać Cię!`);
           return;
       }
-      
+
       // Pay
       const newGold = character.gold - finalCost;
       const newBonus = currentBonus + 1;
-      
+
       // Update Local
       const newBoughtStats = { ...character.boughtStats, [`${stat}_bonus`]: newBonus };
-      
+
       setCharacter(prev => prev ? { ...prev, gold: newGold, boughtStats: newBoughtStats } : null);
-      
+
       addLog(`Wytrenowano ${stat} (+1). Koszt: ${finalCost}`);
-      
+
       // Update DB
       if (user.id !== 'demo-user') {
           const { error } = await supabase.from('player_stats').upsert({
@@ -1310,6 +1404,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
   };
 
+<<<<<<< HEAD
   // Helper to convert Character to Monster for PvP combat
   const createPvPMonster = (char: Character): Monster => {
     const stats = calculateDerivedStats(
@@ -1595,6 +1690,77 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActivePvPBattle(battle);
         changeView('COMBAT');
       });
+=======
+  // --- ACCOUNT STASH METHODS ---
+
+  const moveToStash = (inventoryIndex: number) => {
+      if (!character) return;
+
+      const item = character.inventory[inventoryIndex];
+      if (!item) {
+          addLog("Brak przedmiotu w tym slocie!");
+          return;
+      }
+
+      // Find first free stash slot
+      const freeStashSlot = accountStash.findIndex(slot => slot === null);
+      if (freeStashSlot === -1) {
+          addLog("Magazyn pełny!");
+          showToast("Magazyn jest pełny!", 'error');
+          return;
+      }
+
+      // Move item from inventory to stash
+      const newInventory = [...character.inventory];
+      newInventory[inventoryIndex] = null;
+
+      const newStash = [...accountStash];
+      newStash[freeStashSlot] = item;
+
+      setCharacter(prev => prev ? { ...prev, inventory: newInventory } : null);
+      setAccountStash(newStash);
+      addLog(`Przeniesiono do magazynu: ${item.name}`);
+  };
+
+  const moveFromStash = (stashIndex: number) => {
+      if (!character) return;
+
+      const item = accountStash[stashIndex];
+      if (!item) {
+          addLog("Brak przedmiotu w tym slocie magazynu!");
+          return;
+      }
+
+      // Find first free inventory slot
+      const newInventory = addToFirstFreeSlot(character.inventory, item);
+      if (!newInventory) {
+          addLog("Plecak pełny!");
+          showToast("Plecak jest pełny!", 'error');
+          return;
+      }
+
+      // Remove from stash
+      const newStash = [...accountStash];
+      newStash[stashIndex] = null;
+
+      setCharacter(prev => prev ? { ...prev, inventory: newInventory } : null);
+      setAccountStash(newStash);
+      addLog(`Pobrano z magazynu: ${item.name}`);
+  };
+
+  const moveStashItem = (fromIndex: number, toIndex: number) => {
+      if (fromIndex < 0 || fromIndex >= 96 || toIndex < 0 || toIndex >= 96) return;
+      if (fromIndex === toIndex) return;
+
+      const newStash = [...accountStash];
+
+      // Swap logic
+      const temp = newStash[fromIndex];
+      newStash[fromIndex] = newStash[toIndex];
+      newStash[toIndex] = temp;
+
+      setAccountStash(newStash);
+>>>>>>> from-new
   };
 
   return (
@@ -1618,6 +1784,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       marketListings,
       globalWarning,
       globalToast,
+      accountStash,
       signIn,
       signUp,
       signOut,
@@ -1658,6 +1825,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       showToast,
       loadRanking,
       trainStat,
+<<<<<<< HEAD
       loadArenaPlayers,
       loadPlayerProfile,
       startPvPCombat,
@@ -1667,6 +1835,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       activePvPBattle,
       pvpAttackNotification,
       dismissPvPNotification: () => setPvpAttackNotification(null)
+=======
+      moveToStash,
+      moveFromStash,
+      moveStashItem
+>>>>>>> from-new
     }}>
       {children}
     </GameContext.Provider>

@@ -441,12 +441,14 @@ const dungeonBoss1: Monster = {
     goldReward: 35,
     type: 'boss',
     description: 'Władca krypty, którego ugryzienie zatruwa duszę.',
-    lootTable: { 
-        common: 60, unique: 20, hero: 15, legendary: 3, talisman: 1, 
-        legends: COMMON_LEGENDS, 
+    lootTable: {
+        common: 60, unique: 20, hero: 15, legendary: 15, talisman: 1,
+        signatureSlots: ['helmet', 'gloves'], // SIGNATURE DROPS
+        legends: COMMON_LEGENDS,
         tytanic: BOSS_TYTANIC,
         expMultiplier: 6,
-        level_gate: { unique: 1, heroic: 11, legendary: 16, tytanic: 26 }
+        level_gate: { unique: 1, heroic: 11, legendary: 16, tytanic: 26 },
+        rarity: { common: 60, unique: 20, heroic: 15, legendary: 15, tytanic: 1 }
     },
     mechanics: [
         { name: 'Ugryzienie Ghula', description: 'Zadaje 125% obrażeń + trucizna', trigger: 'every_n_turns', value: 2, effect: 'dot_poison', effectValue: 6, duration: 3 },
@@ -465,12 +467,14 @@ const dungeonBoss2: Monster = {
     goldReward: 60,
     type: 'boss',
     description: 'Przywódca stada, którego wycie mrozi krew w żyłach.',
-    lootTable: { 
-        common: 60, unique: 20, hero: 15, legendary: 3, talisman: 1.5, 
-        legends: COMMON_LEGENDS, 
+    lootTable: {
+        common: 60, unique: 20, hero: 15, legendary: 15, talisman: 1.5,
+        signatureSlots: ['boots', 'amulet'], // SIGNATURE DROPS
+        legends: COMMON_LEGENDS,
         tytanic: BOSS_TYTANIC,
         expMultiplier: 6,
-        level_gate: { unique: 1, heroic: 11, legendary: 16, tytanic: 26 }
+        level_gate: { unique: 1, heroic: 11, legendary: 16, tytanic: 26 },
+        rarity: { common: 60, unique: 20, heroic: 15, legendary: 15, tytanic: 1 }
     },
     mechanics: [
         { name: 'Alfa-Szarpnięcie', description: 'Ignoruje 50% pancerza', trigger: 'every_n_turns', value: 3, effect: 'ignore_armor_percent', effectValue: 0.5 },
@@ -489,12 +493,14 @@ const dungeonBoss3: Monster = {
     goldReward: 100,
     type: 'boss',
     description: 'Mag posługujący się czystą energią Eteru.',
-    lootTable: { 
-        common: 55, unique: 20, hero: 15, legendary: 3, talisman: 2, 
-        legends: COMMON_LEGENDS, 
+    lootTable: {
+        common: 55, unique: 20, hero: 15, legendary: 18, talisman: 2,
+        signatureSlots: ['armor', 'ring'], // SIGNATURE DROPS
+        legends: COMMON_LEGENDS,
         tytanic: BOSS_TYTANIC,
         expMultiplier: 6,
-        level_gate: { unique: 1, heroic: 11, legendary: 16, tytanic: 26 }
+        level_gate: { unique: 1, heroic: 11, legendary: 16, tytanic: 26 },
+        rarity: { common: 55, unique: 20, heroic: 15, legendary: 18, tytanic: 1.5 }
     },
     mechanics: [
         { name: 'Uderzenie Eteru', description: 'Obrażenia magiczne 1.5x', trigger: 'every_n_turns', value: 3, effect: 'damage_multiplier', effectValue: 1.5 },
@@ -513,13 +519,14 @@ const dungeonBoss4: Monster = {
     goldReward: 150,
     type: 'boss',
     description: 'Ostateczna forma Eteru. Pan Upadłej Cytadeli.',
-    lootTable: { 
-        common: 50, unique: 25, hero: 15, legendary: 3, mythic: 0.4, talisman: 4, 
-        legends: COMMON_LEGENDS, 
+    lootTable: {
+        common: 50, unique: 25, hero: 15, legendary: 20, mythic: 2, talisman: 4,
+        signatureSlots: ['weapon', 'shield'], // SIGNATURE DROPS - End Boss!
+        legends: COMMON_LEGENDS,
         tytanic: BOSS_TYTANIC,
         expMultiplier: 6,
         level_gate: { unique: 1, heroic: 11, legendary: 16, tytanic: 26 },
-        rarity: { common: 50, unique: 25, heroic: 15, legendary: 3, tytanic: 0.4 }
+        rarity: { common: 50, unique: 25, heroic: 15, legendary: 20, tytanic: 2 }
     },
     mechanics: [
         { name: 'Rytuał Dusz', description: 'Kradnie 10% HP', trigger: 'every_n_turns', value: 3, effect: 'heal_percent', effectValue: 10 }, 

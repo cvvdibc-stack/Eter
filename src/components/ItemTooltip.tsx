@@ -121,6 +121,22 @@ export const ItemTooltip: React.FC<{
                 {itm.stats?.bonusGold ? <div className="flex justify-between text-xs text-yellow-500"><span>Złoto</span><span>+{itm.stats.bonusGold}%</span></div> : null}
             </div>
 
+            {/* Mythic Prestige Section */}
+            {itm.slainBy && (
+                <div className="bg-gradient-to-r from-red-950/50 to-purple-950/50 p-2 border-y border-red-500/30">
+                    <div className="text-[10px] text-red-400 font-bold uppercase tracking-wider text-center mb-1">
+                        ⚔️ Legenda Eteru ⚔️
+                    </div>
+                    <div className="text-[9px] text-slate-300 text-center leading-relaxed">
+                        <div className="text-amber-400 font-bold">{itm.slainBy.bossName}</div>
+                        <div className="text-slate-400">został pokonany dnia</div>
+                        <div className="text-blue-300">{new Date(itm.slainBy.date).toLocaleDateString('pl-PL')}</div>
+                        <div className="text-slate-400">przez</div>
+                        <div className="text-green-400 font-bold">{itm.slainBy.playerName}</div>
+                    </div>
+                </div>
+            )}
+
             {/* Footer */}
             <div className="bg-black/30 p-2 border-t border-slate-700 flex flex-col gap-1">
                 <div className="flex justify-between text-amber-500 font-bold text-xs">

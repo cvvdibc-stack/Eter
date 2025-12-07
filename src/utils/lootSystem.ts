@@ -1,8 +1,16 @@
 import { Item, ItemRarity, Profession, LootTable } from '../types';
 import { TALISMANS } from '../data/talismans';
 import { generateItem } from './itemGenerator';
+import { getLegendaryItem } from '../data/legendaryItems';
 
-export const generateLoot = (level: number, profession: Profession, lootTable?: LootTable, itemTemplates: Item[] = []): Item => {
+export const generateLoot = (
+  level: number,
+  profession: Profession,
+  lootTable?: LootTable,
+  itemTemplates: Item[] = [],
+  playerName?: string,
+  bossName?: string
+): Item => {
   // Default LootTable if not provided
   if (!lootTable) {
       return generateItem(level, profession, 'common');
@@ -58,54 +66,48 @@ export const generateLoot = (level: number, profession: Profession, lootTable?: 
   }
 
   // 3. Item Selection
-  // If Legendary/Mythic, we prefer using the predefined Templates for Name/Icon
+  // If Legendary/Mythic, use FIXED DATABASE (no more random generation!)
   if (rarity === 'legendary' || rarity === 'mythic') {
-      let itemId: string | null = null;
+      // Boss-Specific Signature Slots (if defined) or all slots (fallback)
+      const allSlots: ItemType[] = ['weapon', 'armor', 'helmet', 'boots', 'gloves', 'shield', 'amulet', 'ring'];
+      const availableSlots = lootTable.signatureSlots && lootTable.signatureSlots.length > 0
+          ? lootTable.signatureSlots
+          : allSlots;
 
-      if (rarity === 'legendary') {
-          itemId = lootTable.legends[targetProfession]; // Use targetProfession
-      } else {
-          // Mythic / Tytanic
-          if (lootTable.tytanic) {
-              itemId = lootTable.tytanic[targetProfession]; // Use targetProfession
-          }
-      }
+      const randomSlot = availableSlots[Math.floor(Math.random() * availableSlots.length)];
 
-      if (itemId && itemTemplates.length > 0) {
-          const template = itemTemplates.find(i => i.id === itemId);
-          if (template) {
-              // RE-GENERATE STATS based on the template's type and intended class
-              const generated = generateItem(level, targetProfession, rarity, template.type);
-              
-              // Calculate Value correctly for template-based items
-              // value = rarityMultiplier (handled in generateItem) * 20 * levelReq
-              // generateItem already handles value calculation now. 
-              // We just need to ensure we keep the template name/icon but use generated stats (as per original logic to keep balance dynamic)
-              // Or should we use template stats?
-              // "Generator często daje itemy za mocne -> Balans robi się niemożliwy"
-              // "Itemy z bazy (legend/tytan) nie mają classReq" -> "Naprawa: Itemy z loot generatora mają: classReq: profession"
-              // If we use template stats, they are fixed JSON. If we regenerate, we use generator logic.
-              // The plan says: "Itemy z bazy (legend/tytan) nie mają classReq ... Dodać kolumnę... i przy seedowaniu ustawiać poprawną klasę."
-              // It doesn't explicitly say "Don't use generator stats". But "Generator często daje itemy za mocne" suggests maybe we SHOULD use fixed stats?
-              // However, fixed stats don't scale with level.
-              // "Dla szablonów z bazy: value = rarityMultiplier * 20 * (levelReq)" -> Suggests we use template properties.
-              
-              // Let's stick to: Use Generator for stats to ensure scaling, but use Template Name/Icon/ID.
-              // AND ensure classReq is set.
-              
-              return {
-                  ...generated,
-                  name: template.name,
-                  icon: template.icon || generated.icon,
-                  id: Math.random().toString(36).substr(2, 9),
-                  classReq: targetProfession, // Enforce
-                  value: generated.value // Generator value is now correct
+      // Construct item ID based on profession, rarity tier, and slot
+      const prefix = rarity === 'legendary' ? 'leg' : 'tytan';
+      const itemId = `${prefix}_${targetProfession}_${randomSlot}`;
+
+      // Get FIXED item from database
+      const legendaryItem = getLegendaryItem(itemId, level);
+
+      if (legendaryItem) {
+          // Return fixed item with enforced class requirement
+          const item: Item = {
+              ...legendaryItem,
+              classReq: targetProfession
+          };
+
+          // MYTHIC ONLY: Add "Slain By" metadata for prestige
+          if (rarity === 'mythic' && playerName && bossName) {
+              item.slainBy = {
+                  playerName,
+                  bossName,
+                  date: new Date().toISOString()
               };
           }
+
+          return item;
       }
+
+      // Fallback if template not found - use semi-random generation
+      console.warn(`[LootSystem] Legendary/Mythic template not found: ${itemId}, falling back to generator`);
+      return generateItem(level, targetProfession, rarity);
   }
 
-  // Common / Unique / Heroic OR Fallback
+  // Common / Unique / Heroic - use semi-random generation
   return generateItem(level, targetProfession, rarity);
 };
 

@@ -3,7 +3,7 @@ import { Item, ItemType } from '../types';
 import { Sword, Shield, Shirt, Crown, Footprints, CircleDot, Gem, Ghost, Hand } from 'lucide-react';
 
 interface ItemIconProps {
-    item: Item | null;
+    item: Item;
     size?: number;
     showRarityBorder?: boolean;
 }
@@ -30,15 +30,6 @@ const TYPE_ICONS: Record<ItemType, React.ElementType> = {
 };
 
 export const ItemIcon: React.FC<ItemIconProps> = ({ item, size = 40, showRarityBorder = false }) => {
-    if (!item) {
-        return (
-            <div 
-                className="relative flex items-center justify-center rounded shadow-inner overflow-hidden bg-slate-800/50 border border-white/5"
-                style={{ width: size, height: size }}
-            />
-        );
-    }
-
     const IconComponent = TYPE_ICONS[item.type] || Sword;
     const bgClass = RARITY_BG[item.rarity] || RARITY_BG.common;
     

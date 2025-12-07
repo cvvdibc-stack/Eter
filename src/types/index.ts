@@ -134,7 +134,6 @@ export interface Item {
   id: string;
   name: string;
   type: ItemType;
-  subtype?: string; // For weapon subtypes (sword, axe, mace, etc.) and offhand types
   rarity: ItemRarity;
   stats: ItemStats;
   value: number;
@@ -143,15 +142,11 @@ export interface Item {
   classReq?: Profession;
   upgradeLevel: number;
   bonusEffects?: string[];
-<<<<<<< HEAD
-  setName?: string; // Set name for set items
-=======
   slainBy?: {
     playerName: string;
     bossName: string;
     date: string; // ISO date string
   };
->>>>>>> from-new
 }
 
 export interface TalismanDef {
@@ -199,7 +194,6 @@ export interface Character {
   unlocked_bonuses?: Record<string, BonusType[]>;
   dungeon_progress?: Record<string, number>; 
   kill_stats?: Record<string, number>; 
-  lockedItems?: string[]; // Lista ID zablokowanych itemów (nie można sprzedać)
 }
 
 export interface CombatTurn {
@@ -286,7 +280,6 @@ export interface Monster {
   type: 'normal' | 'elite' | 'boss' | 'animal' | 'humanoid' | 'undead' | 'demon'; 
   description?: string;
   mechanics?: BossMechanic[]; 
-  profession?: Profession; // For PvP monsters (converted from Character)
 }
 
 export interface Dungeon {
@@ -308,27 +301,8 @@ export interface MarketListing {
     expires_at: string;
 }
 
-<<<<<<< HEAD
-export interface PvPBattle {
-    id: string;
-    attacker_id: string;
-    defender_id: string;
-    attacker_name: string;
-    defender_name: string;
-    status: 'active' | 'completed' | 'cancelled';
-    winner_id?: string;
-    battle_logs: CombatTurn[];
-    attacker_hp: number;
-    defender_hp: number;
-    attacker_max_hp: number;
-    defender_max_hp: number;
-    turn_count: number;
-    created_at: string;
-    updated_at: string;
-=======
 export interface AccountStash {
     user_id: string;
     items: (Item | null)[];
     updated_at?: string;
->>>>>>> from-new
 }

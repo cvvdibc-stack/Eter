@@ -6,7 +6,7 @@ import { ItemTooltip } from './ItemTooltip';
 import { ItemIcon } from './ItemIcon';
 
 export const AuctionHouseScreen: React.FC = () => {
-    const { character, user, view, fetchMarketListings, createMarketListing, buyMarketListing, cancelMarketListing, marketListings, payGold, addLog, showToast } = useGame();
+    const { character, user, view, fetchMarketListings, createMarketListing, buyMarketListing, cancelMarketListing, marketListings, payGold, addLog } = useGame();
     
     const [activeTab, setActiveTab] = useState<'MARKET' | 'MY_OFFERS'>('MARKET');
     const [hoveredItem, setHoveredItem] = useState<{ item: Item, rect: DOMRect } | null>(null);
@@ -40,18 +40,7 @@ export const AuctionHouseScreen: React.FC = () => {
             return;
         }
         
-        // Maximum price limit: 5,000,000
-        const MAX_PRICE = 5000000;
-        if (price > MAX_PRICE) {
-            addLog(`Maksymalna cena to ${MAX_PRICE.toLocaleString()} złota (5 milionów).`);
-            return;
-        }
-        
         const item = character.inventory[selectedItemIndex];
-        if (!item) {
-            addLog("Wybrano pusty slot ekwipunku.");
-            return;
-        }
         
         // Fee calculation (5%)
         const fee = Math.ceil(price * 0.05);
@@ -69,14 +58,12 @@ export const AuctionHouseScreen: React.FC = () => {
     };
 
     const filteredListings = marketListings.filter(l => {
-        // Filter out listings with null items
-        if (!l.item) return false;
         if (activeTab === 'MY_OFFERS') return l.seller_id === user.id;
         if (activeTab === 'MARKET') return l.seller_id !== user.id; // Don't show my own in global market? Or show but highlight. Usually separating is clearer.
         return true;
     }).filter(l => {
         if (rarityFilter === 'all') return true;
-        return l.item?.rarity === rarityFilter;
+        return l.item.rarity === rarityFilter;
     }).sort((a, b) => {
         if (sort === 'price_asc') return a.price - b.price;
         if (sort === 'price_desc') return b.price - a.price;
@@ -182,9 +169,7 @@ export const AuctionHouseScreen: React.FC = () => {
                                 <div className="text-center py-20 text-slate-600 italic">Brak ofert spełniających kryteria.</div>
                             ) : (
                                 <div className="grid grid-cols-4 gap-3">
-                                    {filteredListings.map(listing => {
-                                        if (!listing.item) return null;
-                                        return (
+                                    {filteredListings.map(listing => (
                                         <div key={listing.id} className="bg-[#0b0d10] border border-white/5 rounded p-3 flex flex-col gap-2 hover:border-white/20 transition-colors group relative">
                                             <div 
                                                 className="flex justify-center py-2 bg-[#13161c] rounded cursor-help"
@@ -212,8 +197,7 @@ export const AuctionHouseScreen: React.FC = () => {
                                                 </button>
                                             </div>
                                         </div>
-                                        );
-                                    })}
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -230,10 +214,10 @@ export const AuctionHouseScreen: React.FC = () => {
                             </h3>
                             
                             <div className="flex-1 bg-[#0b0d10] rounded border border-white/5 p-4 flex flex-col items-center justify-center mb-4 relative">
-                                {selectedItemIndex !== null && character.inventory[selectedItemIndex] ? (
+                                {selectedItemIndex !== null ? (
                                     <>
                                         <ItemIcon item={character.inventory[selectedItemIndex]} size={64} />
-                                        <div className="mt-2 font-bold text-slate-200 text-center">{character.inventory[selectedItemIndex]!.name}</div>
+                                        <div className="mt-2 font-bold text-slate-200 text-center">{character.inventory[selectedItemIndex].name}</div>
                                         <button 
                                             onClick={() => setSelectedItemIndex(null)}
                                             className="absolute top-2 right-2 text-slate-500 hover:text-white"
@@ -250,57 +234,24 @@ export const AuctionHouseScreen: React.FC = () => {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                                        Cena (Złoto) 
-                                        <span className="text-amber-500 ml-2">Max: 5,000,000</span>
-                                    </label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Cena (Złoto)</label>
                                     <div className="relative">
                                         <input 
-                                            type="text" 
+                                            type="number" 
                                             value={priceInput}
-                                            onChange={(e) => {
-                                                const val = e.target.value.replace(/[^0-9]/g, ''); // Only numbers
-                                                if (val === '') {
-                                                    setPriceInput('');
-                                                    return;
-                                                }
-                                                const num = parseInt(val, 10);
-                                                if (!isNaN(num) && num >= 0) {
-                                                    if (num <= 5000000) {
-                                                        setPriceInput(val);
-                                                    } else {
-                                                        setPriceInput('5000000');
-                                                        showToast('Maksymalna cena to 5,000,000 złota', 'error');
-                                                    }
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const num = parseInt(e.target.value, 10);
-                                                if (!isNaN(num) && num > 5000000) {
-                                                    setPriceInput('5000000');
-                                                    showToast('Maksymalna cena to 5,000,000 złota', 'error');
-                                                }
-                                            }}
+                                            onChange={(e) => setPriceInput(e.target.value)}
                                             className="w-full bg-[#0b0d10] border border-white/10 rounded py-2 pl-8 pr-4 text-amber-500 font-mono font-bold focus:border-amber-500 focus:outline-none"
                                             placeholder="0"
                                         />
                                         <Coins size={14} className="absolute left-2.5 top-3 text-slate-500" />
                                     </div>
-                                    {priceInput && parseInt(priceInput) > 5000000 && (
-                                        <div className="text-[10px] text-red-400 mt-1 px-1">
-                                            Maksymalna cena to 5,000,000 złota
-                                        </div>
-                                    )}
                                 </div>
 
-                                <div className="text-xs text-slate-500 flex justify-between px-1 mb-1">
+                                <div className="text-xs text-slate-500 flex justify-between px-1">
                                     <span>Prowizja (5%):</span>
                                     <span className="text-red-400 font-mono">
-                                        {priceInput ? Math.ceil(Math.min(parseInt(priceInput) || 0, 5000000) * 0.05) : 0} g
+                                        {priceInput ? Math.ceil(parseInt(priceInput) * 0.05) : 0} g
                                     </span>
-                                </div>
-                                <div className="text-[10px] text-amber-500/80 text-center px-1 mb-2 bg-amber-900/20 py-1 rounded border border-amber-900/30">
-                                    ⚠️ Maksymalna cena: <span className="font-bold">5,000,000 złota</span>
                                 </div>
 
                                 <button 
@@ -323,12 +274,11 @@ export const AuctionHouseScreen: React.FC = () => {
                                         {character.inventory.map((item, idx) => (
                                             <div 
                                                 key={idx}
-                                                onClick={() => item && setSelectedItemIndex(idx)}
-                                                className={`aspect-square border rounded flex items-center justify-center transition-all relative
-                                                    ${item ? 'cursor-pointer hover:border-purple-500' : ''}
-                                                    ${selectedItemIndex === idx && item ? 'border-purple-500 bg-purple-900/20' : 'border-white/5 bg-[#13161c]'}
+                                                onClick={() => setSelectedItemIndex(idx)}
+                                                className={`aspect-square border rounded flex items-center justify-center cursor-pointer hover:border-purple-500 transition-all relative
+                                                    ${selectedItemIndex === idx ? 'border-purple-500 bg-purple-900/20' : 'border-white/5 bg-[#13161c]'}
                                                 `}
-                                                onMouseEnter={(e) => item && setHoveredItem({ item, rect: e.currentTarget.getBoundingClientRect() })}
+                                                onMouseEnter={(e) => setHoveredItem({ item, rect: e.currentTarget.getBoundingClientRect() })}
                                                 onMouseLeave={() => setHoveredItem(null)}
                                             >
                                                 <div className="scale-75 pointer-events-none">
@@ -357,9 +307,7 @@ export const AuctionHouseScreen: React.FC = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-white/5">
-                                                {filteredListings.map(l => {
-                                                    if (!l.item) return null;
-                                                    return (
+                                                {filteredListings.map(l => (
                                                     <tr key={l.id} className="hover:bg-white/5">
                                                         <td className="p-3 flex items-center gap-3">
                                                             <div className="w-8 h-8">
@@ -378,8 +326,7 @@ export const AuctionHouseScreen: React.FC = () => {
                                                             </button>
                                                         </td>
                                                     </tr>
-                                                    );
-                                                })}
+                                                ))}
                                             </tbody>
                                         </table>
                                     )}

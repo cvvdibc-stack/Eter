@@ -285,9 +285,6 @@ export const calculateDerivedStats = (
       dodgeChance += dex * 0.1;
   }
   
-  // Cap dodge chance at 60%
-  dodgeChance = Math.min(60, dodgeChance);
-  
   const baseWpnMin = 1 + level; 
   const baseWpnMax = 2 + level;
 
@@ -382,6 +379,12 @@ export const calculateDerivedStats = (
     poisonChance: ePoison,
     burnChance: eBurn,
     
+    uncappedStrength: 0,
+    uncappedDexterity: 0,
+    uncappedIntelligence: 0,
+    uncappedVitality: 0,
+    statCap: 0,
+
     // Mechanics
     etherealVeil: eEthereal,
     bloodFury: eBloodFury,

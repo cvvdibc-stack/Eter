@@ -133,3 +133,4 @@
 - Grafiki powinny mieć dobre centrum kompozycji, bo mogą być przycinane
 
 
+

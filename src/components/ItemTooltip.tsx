@@ -1,6 +1,5 @@
 import React from 'react';
-import { Item, ItemType, Profession } from '../types';
-import { getProfessionName } from '../utils/professionUtils';
+import { Item, ItemType } from '../types';
 
 const getTypeName = (type: ItemType) => {
     const names: Record<string, string> = {
@@ -29,18 +28,7 @@ const getRarityColor = (rarity: string) => {
     }
 };
 
-export const ItemTooltip: React.FC<{ 
-    item: Item | null, 
-    equippedItem?: Item | null, 
-    playerLevel: number, 
-    playerClass?: string, 
-    rect: DOMRect,
-    isLocked?: boolean,
-    onLock?: () => void,
-    onUnlock?: () => void
-}> = ({ item, equippedItem, playerLevel, playerClass, rect, isLocked, onLock, onUnlock }) => {
-    if (!item) return null;
-    
+export const ItemTooltip: React.FC<{ item: Item, equippedItem?: Item | null, playerLevel: number, playerClass?: string, rect: DOMRect }> = ({ item, equippedItem, playerLevel, playerClass, rect }) => {
     const isComparison = !!equippedItem && equippedItem.id !== item.id && equippedItem.type === item.type; // Only compare same type
     
     const cardWidth = 256;
@@ -150,7 +138,7 @@ export const ItemTooltip: React.FC<{
                 {itm.classReq && (
                     <div className="flex justify-between text-[10px]">
                         <span className="text-slate-500">Wymagana klasa:</span>
-                        <span className={!playerClass || playerClass === itm.classReq ? 'text-green-500' : 'text-red-500 uppercase font-bold'}>{getProfessionName(itm.classReq)}</span>
+                        <span className={!playerClass || playerClass === itm.classReq ? 'text-green-500' : 'text-red-500 uppercase font-bold'}>{itm.classReq}</span>
                     </div>
                 )}
                 {!label && <div className="text-[9px] text-slate-600 text-center mt-1 italic">Kliknij, aby użyć/przenieść</div>}
@@ -160,7 +148,7 @@ export const ItemTooltip: React.FC<{
 
     return (
         <div 
-            className="fixed z-[9999] flex gap-2 items-start"
+            className="fixed z-[9999] pointer-events-none flex gap-2 items-start"
             style={{ top, left, transform, width: tooltipWidth }}
         >
             {isComparison && renderCard(equippedItem!, "Obecnie założony")}

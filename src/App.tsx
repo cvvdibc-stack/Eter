@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import { CharacterCreation } from './components/CharacterCreation';
 import { InventoryScreen } from './components/InventoryScreen';
@@ -16,26 +16,14 @@ import { AuthScreen } from './components/AuthScreen';
 import { CharacterSelection } from './components/CharacterSelection';
 import { RankingScreen } from './components/RankingScreen';
 import { TrainerScreen } from './components/TrainerScreen';
-<<<<<<< HEAD
-import { ArenaScreen } from './components/ArenaScreen';
-import { LandingPage } from './components/landing/LandingPage';
-=======
 import { StashScreen } from './components/StashScreen';
->>>>>>> from-new
 
 const GameContent: React.FC = () => {
-  const { view, user, changeView } = useGame();
+  const { view, user } = useGame();
 
-  // Show landing page if not logged in
-  useEffect(() => {
-    if (!user && view === 'AUTH') {
-      changeView('LANDING');
-    }
-  }, [user, view, changeView]);
-
-  // 1. Landing Page (shown when not logged in)
-  if (!user && (view === 'AUTH' || view === 'LANDING')) {
-    return <LandingPage />;
+  // 1. Auth Flow
+  if (!user && view === 'AUTH') {
+    return <AuthScreen />;
   }
 
   // 2. Character Selection Flow
@@ -64,7 +52,10 @@ const GameContent: React.FC = () => {
           case 'DUNGEON':
              return <DungeonScreen />;
           case 'ARENA':
-             return <ArenaScreen />;
+             return <div className="p-10 text-white bg-black/50 rounded border border-amber-900/50 text-center">
+                <h2 className="text-3xl font-bold text-amber-600 mb-4 font-serif">Arena Gladiatorów</h2>
+                <p className="text-slate-400">Walcz z innymi graczami o chwałę. (PvP wkrótce)</p>
+             </div>;
           case 'SHOP':
             return <ShopScreen />;
           case 'DOCTOR':

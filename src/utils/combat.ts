@@ -9,12 +9,28 @@ export const calculateDamage = (
   defender: DerivedStats, 
   type: 'phys' | 'mag' = 'phys'
 ) => {
-  // 1. Dodge Check (using defender's dodgeChance directly, capped at 60%)
-  // Dodge chance is already capped at 60% in calculateDerivedStats
-  const dodgeChance = Math.min(60, defender.dodgeChance);
+  // 1. Hit Chance Calculation
+  // chance_to_hit = 80% + (Att_Dex * 0.3%) - (Def_Dex * 0.2%)
+  // Need raw Dex here, but we only have DerivedStats passed in usually.
+  // Approximation: derived 'dodgeChance' is proportional to Dex (Dex * 0.4) -> Dex = Dodge / 0.4
+  // Better: Pass BaseStats? For now, we use DerivedStats which has specific combat stats.
   
-  // Check if defender dodges the attack
-  if (chance(dodgeChance)) {
+  // Let's use the explicit Hit Chance formula logic but adapted to available derived stats
+  // Attacker Crit Chance is roughly Dex * 0.3 (for non-assassins). 
+  // Defender Dodge is Dex * 0.4.
+  // Let's trust the derived stats directly or simplify.
+  
+  // Simplified Hit Check based on Dodge only (Classic RPG):
+  // Hit Chance = 95% - Enemy Dodge.
+  // Docs Formula: 80% + (AttDex * 0.3) - (DefDex * 0.2)
+  // We will approximate AttDex from critChance/0.3 and DefDex from dodgeChance/0.4
+  const attDexApprox = attacker.critChance / 0.3;
+  const defDexApprox = defender.dodgeChance / 0.4;
+  
+  let hitChance = 80 + (attDexApprox * 0.3) - (defDexApprox * 0.2);
+  hitChance = Math.max(20, Math.min(95, hitChance));
+
+  if (!chance(hitChance)) {
     return { damage: 0, isCrit: false, isMiss: true };
   }
 

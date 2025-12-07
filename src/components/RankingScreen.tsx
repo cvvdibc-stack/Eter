@@ -4,7 +4,6 @@ import { Trophy, Skull, Coins, User } from 'lucide-react';
 import { Profession, Item } from '../types';
 import { getAvatarSrc } from '../utils/assets';
 import { ItemTooltip } from './ItemTooltip';
-import { getProfessionName } from '../utils/professionUtils';
 
 // --- Types ---
 type RankingCategory = 'LEVEL' | 'BOSS' | 'ECONOMY';
@@ -151,7 +150,7 @@ export const RankingScreen: React.FC = () => {
                         
                         <div className="flex gap-2 mt-1">
                             <span className="text-[10px] font-bold text-slate-400 bg-black/40 px-2 py-0.5 rounded uppercase tracking-wider border border-white/5">
-                                {getProfessionName(entry.profession)}
+                                {entry.profession}
                             </span>
                             <span className="text-[10px] font-mono font-bold text-slate-300 bg-black/40 px-2 py-0.5 rounded border border-white/5">
                                 Lvl {entry.level}
@@ -239,7 +238,7 @@ export const RankingScreen: React.FC = () => {
                                      {entry.id === character.id && <span className="text-[10px] bg-amber-900 text-amber-200 px-1 rounded ml-2">TY</span>}
                                  </div>
                                  <div className="w-32 text-center text-xs uppercase tracking-wide text-slate-500">
-                                     {getProfessionName(entry.profession)}
+                                     {entry.profession}
                                  </div>
                                  <div className="w-24 text-center font-mono text-slate-400">
                                      {entry.level}

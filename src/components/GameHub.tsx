@@ -1,7 +1,6 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
 import { User, Shield, ShoppingBag, Map, Scroll } from 'lucide-react';
-import { getProfessionName } from '../utils/professionUtils';
 
 export const GameHub: React.FC = () => {
   const { character, changeView } = useGame();
@@ -26,7 +25,7 @@ export const GameHub: React.FC = () => {
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">{character.name}</h2>
-            <p className="text-amber-500">Lvl {character.level} {getProfessionName(character.profession)}</p>
+            <p className="text-amber-500">Lvl {character.level} {character.profession}</p>
           </div>
         </div>
         

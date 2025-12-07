@@ -1,20 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-<<<<<<< HEAD
-import { Character, Profession, Item, ItemType, CombatLog, BonusType, Monster, MarketListing, PvPBattle, CombatTurn } from '../types';
-=======
 import { Character, Profession, Item, ItemType, CombatLog, BonusType, Monster, MarketListing, AccountStash } from '../types';
->>>>>>> from-new
 import { PROFESSIONS } from '../data/professions';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { XP_TO_NEXT_LEVEL, calculateDerivedStats, calculateMaxTrainableStat, getStatsForLevel } from '../utils/formulas';
 import { generateItem } from '../utils/itemGenerator';
 
-<<<<<<< HEAD
-type GameView = 'AUTH' | 'LANDING' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING' | 'TRAINER';
-=======
 type GameView = 'AUTH' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING' | 'TRAINER' | 'STASH';
->>>>>>> from-new
 
 interface GameState {
   user: User | null;
@@ -83,32 +75,11 @@ interface GameContextType extends GameState {
 
   loadRanking: () => Promise<any[]>;
   trainStat: (stat: 'strength' | 'dexterity' | 'vitality' | 'intelligence') => Promise<void>;
-<<<<<<< HEAD
-  
-  // Item Locking
-  lockItem: (itemId: string) => void;
-  unlockItem: (itemId: string) => void;
-  quicksellAll: () => void;
-  
-  // Arena PvP
-  loadArenaPlayers: () => Promise<{ suggested: Character[], others: Character[] }>;
-  loadPlayerProfile: (characterId: string) => Promise<Character | null>;
-  startPvPCombat: (targetCharacter: Character) => void;
-  
-  // PvP Notifications & Live Viewing
-  createPvPBattle: (defender: Character, battleData: { attackerHp: number, defenderHp: number, attackerMaxHp: number, defenderMaxHp: number }) => Promise<string | null>;
-  updatePvPBattle: (battleId: string, updates: { attackerHp?: number, defenderHp?: number, turnCount?: number, battleLogs?: any[], status?: string, winnerId?: string }) => Promise<void>;
-  watchPvPBattle: (battleId: string) => void;
-  activePvPBattle: PvPBattle | null;
-  pvpAttackNotification: PvPBattle | null;
-  dismissPvPNotification: () => void;
-=======
 
   // Account Stash
   moveToStash: (inventoryIndex: number) => void;
   moveFromStash: (stashIndex: number) => void;
   moveStashItem: (fromIndex: number, toIndex: number) => void;
->>>>>>> from-new
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -118,7 +89,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
   const [myCharacters, setMyCharacters] = useState<Character[]>([]);
-  const [view, setView] = useState<GameView>('LANDING');
+  const [view, setView] = useState<GameView>('AUTH');
   const [logs, setLogs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [unlockedMonsters, setUnlockedMonsters] = useState<string[]>(['monster_1']);
@@ -133,12 +104,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [marketListings, setMarketListings] = useState<MarketListing[]>([]);
   const [globalWarning, setGlobalWarning] = useState<string | null>(null);
   const [globalToast, setGlobalToast] = useState<{ message: string, type: 'error' | 'success' | 'info' } | null>(null);
-<<<<<<< HEAD
-  const [activePvPBattle, setActivePvPBattle] = useState<PvPBattle | null>(null);
-  const [pvpAttackNotification, setPvpAttackNotification] = useState<PvPBattle | null>(null);
-=======
   const [accountStash, setAccountStash] = useState<(Item | null)[]>(Array(96).fill(null)); // 96 slots for stash
->>>>>>> from-new
 
   // ... (useEffect logic remains same, truncated for brevity if possible, but writing full file to be safe)
   // Load Game Data (Monsters & Items)
@@ -365,75 +331,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  // Subscribe to PvP attack notifications
-  useEffect(() => {
-    if (!character || !user) return;
-
-    const channel = supabase
-      .channel('pvp-attacks')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'pvp_battles',
-          filter: `defender_id=eq.${character.id}`
-        },
-        (payload) => {
-          const battle = payload.new as any;
-          const pvpBattle: PvPBattle = {
-            id: battle.id,
-            attacker_id: battle.attacker_id,
-            defender_id: battle.defender_id,
-            attacker_name: battle.attacker_name,
-            defender_name: battle.defender_name,
-            status: battle.status,
-            winner_id: battle.winner_id,
-            battle_logs: battle.battle_logs || [],
-            attacker_hp: battle.attacker_hp,
-            defender_hp: battle.defender_hp,
-            attacker_max_hp: battle.attacker_max_hp,
-            defender_max_hp: battle.defender_max_hp,
-            turn_count: battle.turn_count,
-            created_at: battle.created_at,
-            updated_at: battle.updated_at
-          };
-          setPvpAttackNotification(pvpBattle);
-          showToast(`${battle.attacker_name} atakuje Cię!`, 'info');
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'pvp_battles',
-          filter: `defender_id=eq.${character.id}`
-        },
-        (payload) => {
-          // Update notification if battle is being watched
-          if (activePvPBattle && activePvPBattle.id === payload.new.id) {
-            const battle = payload.new as any;
-            setActivePvPBattle({
-              ...activePvPBattle,
-              attacker_hp: battle.attacker_hp,
-              defender_hp: battle.defender_hp,
-              turn_count: battle.turn_count,
-              battle_logs: battle.battle_logs || [],
-              status: battle.status,
-              winner_id: battle.winner_id,
-              updated_at: battle.updated_at
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [character, user, activePvPBattle]);
-
   // Auto-select character
   useEffect(() => {
       const lastCharId = localStorage.getItem('last_char_id');
@@ -583,7 +480,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 unlocked_bonuses: d.unlocked_bonuses || {},
                 dungeon_progress: d.dungeon_progress || {},
                 kill_stats: d.kill_stats || {},
-                lockedItems: d.locked_items || [],
                 currentHp: d.current_hp !== undefined ? d.current_hp : maxHp, 
                 lastRegenTime: d.last_regen_time || Date.now()
             };
@@ -740,19 +636,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return newInv;
   };
 
-  const isInventoryFull = (inv: (Item | null)[]): boolean => {
-      const padded = [...inv];
-      while (padded.length < 48) padded.push(null);
-      return padded.every(slot => slot !== null);
-  };
-
   const addItem = async (item: Item) => {
     if (!character) return;
     const newInventory = addToFirstFreeSlot(character.inventory, item);
     
     if (!newInventory) {
-        addLog("⚠️ Plecak pełny! Przedmiot przepadł. Zrób miejsce w plecaku przed następną walką.");
-        showToast("Plecak pełny! Przedmiot przepadł. Zrób miejsce przed następną walką.", 'error');
+        addLog("Plecak pełny! Przedmiot przepadł.");
         return;
     }
     
@@ -770,9 +659,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (item.classReq && item.classReq !== character.profession) {
-         const professionName = PROFESSIONS[item.classReq].name;
-         addLog(`Wymagana klasa: ${professionName}`);
-         showToast(`Ten przedmiot jest tylko dla klasy: ${professionName}`, 'error');
+         addLog(`Wymagana klasa: ${item.classReq}`);
+         showToast(`Ten przedmiot jest tylko dla klasy: ${item.classReq}`, 'error');
          return;
     }
 
@@ -849,14 +737,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return; 
       }
 
-      // Check if inventory is full
-      if (isInventoryFull(character.inventory)) {
-          const msg = "⚠️ Plecak jest pełny! Zdobyte przedmioty mogą przepaść. Zrób miejsce przed walką.";
-          addLog(msg);
-          showToast(msg, 'error');
-          // Don't block combat, just warn
-      }
-
       setActiveMonsterId(monsterId);
       setActiveMonsterType(type); // Set Context
       setIsQuickCombat(false);
@@ -880,14 +760,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           addLog(msg);
           showToast(msg, 'error');
           return; 
-      }
-
-      // Check if inventory is full
-      if (isInventoryFull(character.inventory)) {
-          const msg = "⚠️ Plecak jest pełny! Zdobyte przedmioty mogą przepaść. Zrób miejsce przed walką.";
-          addLog(msg);
-          showToast(msg, 'error');
-          // Don't block combat, just warn
       }
 
       setActiveMonsterId(monsterId);
@@ -1040,13 +912,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!character) return;
       const item = character.inventory[index];
       if (!item) return;
-
-      // Check if item is locked
-      const lockedItems = character.lockedItems || [];
-      if (lockedItems.includes(item.id)) {
-          addLog("Ten przedmiot jest zablokowany i nie może być sprzedany!");
-          return;
-      }
 
       const sellPrice = Math.floor(item.value * 0.4); // 40% value
       
@@ -1277,62 +1142,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCharacter(prev => prev ? { ...prev, inventory: newInventory } : null);
   };
 
-  const lockItem = (itemId: string) => {
-      if (!character) return;
-      const lockedItems = character.lockedItems || [];
-      if (lockedItems.includes(itemId)) return; // Already locked
-      
-      setCharacter(prev => prev ? {
-          ...prev,
-          lockedItems: [...lockedItems, itemId]
-      } : null);
-      
-      addLog("Przedmiot zablokowany przed sprzedażą.");
-  };
-
-  const unlockItem = (itemId: string) => {
-      if (!character) return;
-      const lockedItems = character.lockedItems || [];
-      if (!lockedItems.includes(itemId)) return; // Not locked
-      
-      setCharacter(prev => prev ? {
-          ...prev,
-          lockedItems: lockedItems.filter(id => id !== itemId)
-      } : null);
-      
-      addLog("Przedmiot odblokowany.");
-  };
-
-  const quicksellAll = () => {
-      if (!character) return;
-      const lockedItems = character.lockedItems || [];
-      let totalGold = 0;
-      let soldCount = 0;
-      
-      const newInv = character.inventory.map((item, index) => {
-          if (!item) return null;
-          if (lockedItems.includes(item.id)) return item; // Keep locked items
-          
-          const sellPrice = Math.floor(item.value * 0.4);
-          totalGold += sellPrice;
-          soldCount++;
-          return null;
-      });
-
-      if (soldCount === 0) {
-          addLog("Brak przedmiotów do sprzedania (wszystkie są zablokowane lub plecak jest pusty).");
-          return;
-      }
-
-      setCharacter(prev => prev ? {
-          ...prev,
-          gold: prev.gold + totalGold,
-          inventory: newInv
-      } : null);
-
-      addLog(`Szybka sprzedaż: ${soldCount} przedmiotów za ${totalGold} złota.`);
-  };
-
   const loadRanking = async () => {
       const { data, error } = await supabase
           .from('characters')
@@ -1404,293 +1213,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
   };
 
-<<<<<<< HEAD
-  // Helper to convert Character to Monster for PvP combat
-  const createPvPMonster = (char: Character): Monster => {
-    const stats = calculateDerivedStats(
-      char.baseStats,
-      char.level,
-      char.profession,
-      char.equipment ? Object.values(char.equipment).filter(i => i !== null) as any[] : [],
-      char.activeTalismans || [],
-      char.boughtStats
-    );
-
-    return {
-      id: `pvp_${char.id}`,
-      name: char.name,
-      level: char.level,
-      hp: stats.maxHp,
-      maxHp: stats.maxHp,
-      damageMin: stats.physDmgMin,
-      damageMax: stats.physDmgMax,
-      magicDamageMin: stats.magDmgMin,
-      magicDamageMax: stats.magDmgMax,
-      magicResist: stats.magResist,
-      dodge: stats.dodgeChance,
-      sa: stats.attackSpeed,
-      armor: stats.armor,
-      expReward: 0, // No EXP from PvP
-      goldReward: 0, // No Gold from PvP
-      lootTable: { rarity: { common: 0, unique: 0, heroic: 0, legendary: 0, tytanic: 0 } },
-      type: 'humanoid',
-      description: `Gracz: ${char.name} (${char.profession})`,
-      profession: char.profession // Store profession for damage type determination
-    };
-  };
-
-  const loadArenaPlayers = async (): Promise<{ suggested: Character[], others: Character[] }> => {
-    if (!character || !user) {
-      return { suggested: [], others: [] };
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('characters')
-        .select('*, player_stats(*)')
-        .neq('id', character.id); // Exclude own character only
-
-      if (error) {
-        console.error('Error loading arena players:', error);
-        return { suggested: [], others: [] };
-      }
-
-      if (!data || data.length === 0) {
-        return { suggested: [], others: [] };
-      }
-
-      // Map characters similar to refreshCharacters
-      const mappedChars = data.map((d: any) => {
-        const calculatedBaseStats = getStatsForLevel(d.profession, d.level);
-        const maxHp = 50 + (calculatedBaseStats.vitality * 6);
-        const rawInventory = d.inventory || [];
-        const inventory = [...rawInventory];
-        while (inventory.length < 48) inventory.push(null);
-        const boughtStats = d.player_stats || { strength_bonus: 0, dexterity_bonus: 0, intelligence_bonus: 0, vitality_bonus: 0 };
-
-        return {
-          ...d,
-          boughtStats,
-          maxExp: d.max_exp || XP_TO_NEXT_LEVEL(d.level),
-          baseStats: calculatedBaseStats,
-          equipment: typeof d.equipment === 'string' ? JSON.parse(d.equipment) : (d.equipment || {
-            weapon: null, helmet: null, armor: null,
-            boots: null, gloves: null, amulet: null, ring: null
-          }),
-          inventory: inventory,
-          unlocked_monsters: d.unlocked_monsters || ['monster_1'],
-          talismansInventory: d.talismans_inventory || [],
-          activeTalismans: d.active_talismans || [],
-          unlocked_bonuses: d.unlocked_bonuses || {},
-          dungeon_progress: d.dungeon_progress || {},
-          kill_stats: d.kill_stats || {},
-          lockedItems: d.locked_items || [],
-          currentHp: d.current_hp !== undefined ? d.current_hp : maxHp,
-          lastRegenTime: d.last_regen_time || Date.now()
-        };
-      }) as Character[];
-
-      // Split into suggested (similar level ±5) and others
-      const playerLevel = character.level;
-      const suggested = mappedChars.filter(c => Math.abs(c.level - playerLevel) <= 5);
-      const others = mappedChars.filter(c => Math.abs(c.level - playerLevel) > 5);
-
-      // Sort suggested by level difference (closest first)
-      suggested.sort((a, b) => Math.abs(a.level - playerLevel) - Math.abs(b.level - playerLevel));
-      
-      // Sort others by level (descending)
-      others.sort((a, b) => b.level - a.level);
-
-      return { suggested, others };
-    } catch (err) {
-      console.error('Error in loadArenaPlayers:', err);
-      return { suggested: [], others: [] };
-    }
-  };
-
-  const loadPlayerProfile = async (characterId: string): Promise<Character | null> => {
-    if (!user) return null;
-
-    try {
-      const { data, error } = await supabase
-        .from('characters')
-        .select('*, player_stats(*)')
-        .eq('id', characterId)
-        .single();
-
-      if (error || !data) {
-        console.error('Error loading player profile:', error);
-        return null;
-      }
-
-      const calculatedBaseStats = getStatsForLevel(data.profession, data.level);
-      const maxHp = 50 + (calculatedBaseStats.vitality * 6);
-      const rawInventory = data.inventory || [];
-      const inventory = [...rawInventory];
-      while (inventory.length < 48) inventory.push(null);
-      const boughtStats = data.player_stats || { strength_bonus: 0, dexterity_bonus: 0, intelligence_bonus: 0, vitality_bonus: 0 };
-
-      return {
-        ...data,
-        boughtStats,
-        maxExp: data.max_exp || XP_TO_NEXT_LEVEL(data.level),
-        baseStats: calculatedBaseStats,
-        equipment: typeof data.equipment === 'string' ? JSON.parse(data.equipment) : (data.equipment || {
-          weapon: null, helmet: null, armor: null,
-          boots: null, gloves: null, amulet: null, ring: null
-        }),
-        inventory: inventory,
-        unlocked_monsters: data.unlocked_monsters || ['monster_1'],
-        talismansInventory: data.talismans_inventory || [],
-        activeTalismans: data.active_talismans || [],
-        unlocked_bonuses: data.unlocked_bonuses || {},
-        dungeon_progress: data.dungeon_progress || {},
-        kill_stats: data.kill_stats || {},
-        lockedItems: data.locked_items || [],
-        currentHp: data.current_hp !== undefined ? data.current_hp : maxHp,
-        lastRegenTime: data.last_regen_time || Date.now()
-      } as Character;
-    } catch (err) {
-      console.error('Error in loadPlayerProfile:', err);
-      return null;
-    }
-  };
-
-  const createPvPBattle = async (defender: Character, battleData: { attackerHp: number, defenderHp: number, attackerMaxHp: number, defenderMaxHp: number }): Promise<string | null> => {
-    if (!character || !user) return null;
-
-    try {
-      const { data, error } = await supabase
-        .from('pvp_battles')
-        .insert({
-          attacker_id: character.id,
-          defender_id: defender.id,
-          attacker_name: character.name,
-          defender_name: defender.name,
-          status: 'active',
-          attacker_hp: battleData.attackerHp,
-          defender_hp: battleData.defenderHp,
-          attacker_max_hp: battleData.attackerMaxHp,
-          defender_max_hp: battleData.defenderMaxHp,
-          turn_count: 0,
-          battle_logs: []
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating PvP battle:', error);
-        return null;
-      }
-
-      return data.id;
-    } catch (err) {
-      console.error('Error in createPvPBattle:', err);
-      return null;
-    }
-  };
-
-  const startPvPCombat = async (targetCharacter: Character) => {
-    if (!character) return;
-
-    const pvpMonster = createPvPMonster(targetCharacter);
-    
-    // Calculate initial HP
-    const playerStats = calculateDerivedStats(
-      character.baseStats,
-      character.level,
-      character.profession,
-      character.equipment ? Object.values(character.equipment).filter(i => i !== null) as any[] : [],
-      character.activeTalismans || [],
-      character.boughtStats
-    );
-
-    // Create battle in database
-    const battleId = await createPvPBattle(targetCharacter, {
-      attackerHp: playerStats.maxHp,
-      defenderHp: pvpMonster.maxHp,
-      attackerMaxHp: playerStats.maxHp,
-      defenderMaxHp: pvpMonster.maxHp
-    });
-
-    if (!battleId) {
-      showToast('Nie udało się rozpocząć walki PvP', 'error');
-      return;
-    }
-    
-    // Add to monsters array synchronously using functional update
-    setMonsters(prev => {
-      // Remove any existing PvP monster with same ID
-      const filtered = prev.filter(m => !m.id.startsWith('pvp_'));
-      return [...filtered, pvpMonster];
-    });
-    
-    // Start combat - use setTimeout to ensure state update
-    setTimeout(() => {
-      setActiveMonsterId(pvpMonster.id);
-      setActiveMonsterType('ARENA');
-      changeView('COMBAT');
-    }, 0);
-  };
-
-  const updatePvPBattle = async (battleId: string, updates: { attackerHp?: number, defenderHp?: number, turnCount?: number, battleLogs?: any[], status?: string, winnerId?: string }) => {
-    try {
-      const updateData: any = { updated_at: new Date().toISOString() };
-      if (updates.attackerHp !== undefined) updateData.attacker_hp = updates.attackerHp;
-      if (updates.defenderHp !== undefined) updateData.defender_hp = updates.defenderHp;
-      if (updates.turnCount !== undefined) updateData.turn_count = updates.turnCount;
-      if (updates.battleLogs !== undefined) updateData.battle_logs = updates.battleLogs;
-      if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.winnerId !== undefined) updateData.winner_id = updates.winnerId;
-
-      const { error } = await supabase
-        .from('pvp_battles')
-        .update(updateData)
-        .eq('id', battleId);
-
-      if (error) {
-        console.error('Error updating PvP battle:', error);
-      }
-    } catch (err) {
-      console.error('Error in updatePvPBattle:', err);
-    }
-  };
-
-  const watchPvPBattle = (battleId: string) => {
-    // Load battle and set as active for viewing
-    supabase
-      .from('pvp_battles')
-      .select('*')
-      .eq('id', battleId)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data) {
-          console.error('Error loading battle:', error);
-          return;
-        }
-
-        const battle: PvPBattle = {
-          id: data.id,
-          attacker_id: data.attacker_id,
-          defender_id: data.defender_id,
-          attacker_name: data.attacker_name,
-          defender_name: data.defender_name,
-          status: data.status,
-          winner_id: data.winner_id,
-          battle_logs: data.battle_logs || [],
-          attacker_hp: data.attacker_hp,
-          defender_hp: data.defender_hp,
-          attacker_max_hp: data.attacker_max_hp,
-          defender_max_hp: data.defender_max_hp,
-          turn_count: data.turn_count,
-          created_at: data.created_at,
-          updated_at: data.updated_at
-        };
-
-        setActivePvPBattle(battle);
-        changeView('COMBAT');
-      });
-=======
   // --- ACCOUNT STASH METHODS ---
 
   const moveToStash = (inventoryIndex: number) => {
@@ -1760,7 +1282,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       newStash[toIndex] = temp;
 
       setAccountStash(newStash);
->>>>>>> from-new
   };
 
   return (
@@ -1819,27 +1340,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       buyMarketListing,
       cancelMarketListing,
       moveItem,
-      lockItem,
-      unlockItem,
-      quicksellAll,
       showToast,
       loadRanking,
       trainStat,
-<<<<<<< HEAD
-      loadArenaPlayers,
-      loadPlayerProfile,
-      startPvPCombat,
-      createPvPBattle,
-      updatePvPBattle,
-      watchPvPBattle,
-      activePvPBattle,
-      pvpAttackNotification,
-      dismissPvPNotification: () => setPvpAttackNotification(null)
-=======
       moveToStash,
       moveFromStash,
       moveStashItem
->>>>>>> from-new
     }}>
       {children}
     </GameContext.Provider>

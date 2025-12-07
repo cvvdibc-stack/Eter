@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGame } from '../../context/GameContext';
-import { 
-  Shield, Map, Store, HeartPulse, User, LogOut, Crown, Swords, Skull, Book, Gem, Calendar, Coins, Gavel, Trophy, Dumbbell
+import {
+  Shield, Map, Store, HeartPulse, User, LogOut, Crown, Swords, Skull, Book, Gem, Calendar, Coins, Gavel, Trophy, Dumbbell, Package
 } from 'lucide-react';
 
 export const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -105,6 +105,7 @@ export const GameLayout: React.FC<{ children: React.ReactNode }> = ({ children }
             <MenuButton icon={User} label="Podgląd" targetView="HUB" active={view === 'HUB' || view === 'INVENTORY'} />
             <MenuButton icon={Trophy} label="Rankingi" targetView="RANKING" active={view === 'RANKING'} />
             <MenuButton icon={Gem} label="Talizmany" targetView="TALISMANS" active={view === 'TALISMANS'} />
+            <MenuButton icon={Package} label="Magazyn" targetView="STASH" active={view === 'STASH'} />
             <MenuButton icon={Calendar} label="Historia Walk" targetView="HISTORY" active={view === 'HISTORY'} />
             
             <div className="px-4 py-2 text-xs font-bold text-slate-600 uppercase tracking-wider mt-4">Miasto</div>

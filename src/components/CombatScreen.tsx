@@ -391,7 +391,14 @@ export const CombatScreen: React.FC = () => {
       if (bonuses.includes('DROP')) dropChance += 0.12;
 
       if (Math.random() < dropChance) {
-        const item = generateLoot(monster.level, character!.profession, monster.lootTable, itemTemplates);
+        const item = generateLoot(
+          monster.level,
+          character!.profession,
+          monster.lootTable,
+          itemTemplates,
+          character!.name, // Player name for mythic prestige
+          monster.name     // Boss name for mythic prestige
+        );
         addItem(item);
         lootItemName = item.name;
       }

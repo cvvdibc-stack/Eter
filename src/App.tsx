@@ -16,6 +16,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { CharacterSelection } from './components/CharacterSelection';
 import { RankingScreen } from './components/RankingScreen';
 import { TrainerScreen } from './components/TrainerScreen';
+import { StashScreen } from './components/StashScreen';
 
 const GameContent: React.FC = () => {
   const { view, user } = useGame();
@@ -76,6 +77,8 @@ const GameContent: React.FC = () => {
               return <RankingScreen />;
            case 'TRAINER':
               return <TrainerScreen />;
+           case 'STASH':
+              return <StashScreen />;
           default:
             return <InventoryScreen />;
         }

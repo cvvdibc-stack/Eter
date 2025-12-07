@@ -137,11 +137,16 @@ export interface Item {
   rarity: ItemRarity;
   stats: ItemStats;
   value: number;
-  icon: string; 
+  icon: string;
   levelReq: number;
   classReq?: Profession;
-  upgradeLevel: number; 
+  upgradeLevel: number;
   bonusEffects?: string[];
+  slainBy?: {
+    playerName: string;
+    bossName: string;
+    date: string; // ISO date string
+  };
 }
 
 export interface TalismanDef {
@@ -222,6 +227,7 @@ export interface LootTable {
   };
   talisman?: number; // % Chance for talisman drop
   expMultiplier?: number; // New field for Boss XP boost
+  signatureSlots?: ItemType[]; // Boss-specific signature slots (e.g., ['helmet', 'gloves'])
   legends: {
     warrior: string;
     assassin: string;
@@ -293,4 +299,10 @@ export interface MarketListing {
     price: number;
     created_at: string;
     expires_at: string;
+}
+
+export interface AccountStash {
+    user_id: string;
+    items: (Item | null)[];
+    updated_at?: string;
 }

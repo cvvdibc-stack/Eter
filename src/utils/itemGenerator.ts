@@ -1,22 +1,31 @@
 import { Item, ItemRarity, ItemStats, ItemType, Profession } from '../types';
 
-/* --------------------------- CONFIG: STAT RANGES --------------------------- */
-const STAT_RANGES = {
-    PRIMARY: (lvl: number) => [Math.floor(lvl * 1.2), Math.floor(lvl * 1.8) + 2],
-    DAMAGE: (lvl: number) => [Math.floor(lvl * 0.8), lvl * 2],
-    MAGIC_DMG: (lvl: number) => [Math.floor(lvl * 1.2), Math.floor(lvl * 2.4)],
-    ARMOR: (lvl: number) => [Math.floor(lvl * 0.8), Math.floor(lvl * 1.6) + 5], // Base increased slightly
-    HP: (lvl: number) => [lvl * 6, lvl * 14],
-    VITALITY: (lvl: number) => [Math.floor(lvl * 0.8), Math.floor(lvl * 1.5)],
-    PERCENT_SMALL: (lvl: number) => [1, 5],
-    PERCENT_MED: (lvl: number) => [3, 10],
-    PERCENT_BIG: (lvl: number) => [5, 15],
-    FLAT_SMALL: (lvl: number) => [1, Math.floor(lvl * 1.2)],
-    FLAT_MED: (lvl: number) => [lvl, lvl * 2],
-    INITIATIVE: (_lvl: number) => [2, 5],
-    STABILITY: (_lvl: number) => [0.5, 4],
-    POISON: (_lvl: number) => [5, 20],
-    BURN: (_lvl: number) => [5, 20],
+/* --------------------------- CONFIG: BASE STAT VALUES --------------------------- */
+// Fixed base values (no more wide ranges) - semi-random will add ±variance
+const STAT_BASE_VALUES = {
+    PRIMARY: (lvl: number) => lvl * 1.5,
+    DAMAGE: (lvl: number) => lvl * 1.4,
+    MAGIC_DMG: (lvl: number) => lvl * 1.8,
+    ARMOR: (lvl: number) => lvl * 1.2,
+    HP: (lvl: number) => lvl * 10,
+    VITALITY: (lvl: number) => lvl * 1.2,
+    PERCENT_SMALL: () => 3,
+    PERCENT_MED: () => 7,
+    PERCENT_BIG: () => 11,
+    FLAT_SMALL: (lvl: number) => lvl * 0.8,
+    FLAT_MED: (lvl: number) => lvl * 1.5,
+    INITIATIVE: () => 3,
+    STABILITY: () => 2,
+    POISON: () => 12,
+    BURN: () => 12,
+};
+
+/* --------------------------- CONFIG: CONTROLLED VARIANCE --------------------------- */
+// Variance for semi-random generation (legendary/mythic use fixed database)
+const CONTROLLED_VARIANCE = {
+    common: { min: 0.95, max: 1.05 },    // ±5%
+    unique: { min: 0.92, max: 1.08 },    // ±8%
+    heroic: { min: 0.90, max: 1.10 }     // ±10%
 };
 
 /* --------------------------- CONFIG: RARITIES ------------------------------ */
@@ -32,10 +41,10 @@ const RARITY_BONUSES = {
 
 const RARITY_MULTIPLIER = {
     common: 1.0,
-    unique: 1.6,
-    heroic: 2.8,
-    legendary: 6.0,
-    mythic: 15.0,
+    unique: 1.4,
+    heroic: 1.9,
+    legendary: 3.5,  // Legendary/Mythic should use fixed database, but keeping for fallback
+    mythic: 8.0,
     talisman: 1.0
 };
 
@@ -178,6 +187,25 @@ const rand = (min: number, max: number) =>
 
 const pick = <T>(arr: T[]) => arr[rand(0, arr.length - 1)];
 
+// New function: Apply controlled variance to base values
+const getStatValue = (
+    baseValue: number,
+    multiplier: number,
+    rarity: ItemRarity
+): number => {
+    const variance = CONTROLLED_VARIANCE[rarity as keyof typeof CONTROLLED_VARIANCE];
+
+    if (!variance) {
+        // Legendary/Mythic/Talisman - no variance (should use fixed database)
+        return Math.floor(baseValue * multiplier);
+    }
+
+    // Common/Unique/Heroic - apply controlled variance
+    const randomFactor = variance.min + Math.random() * (variance.max - variance.min);
+    return Math.floor(baseValue * multiplier * randomFactor);
+};
+
+// Legacy function for compatibility (deprecated - use getStatValue)
 const getRangeValue = (range: number[] | number, mult: number) => {
     if (Array.isArray(range)) {
         const base = rand(range[0], range[1]);
@@ -311,129 +339,152 @@ export const generateItem = (
     const multiplier = RARITY_MULTIPLIER[rarity] * statsMultiplier; // Apply Shop Multiplier
 
     const applyStat = (stat: keyof ItemStats, isImplicit: boolean) => {
-        let range;
+        let baseValue: number;
         let isPercent = false;
 
         switch (stat) {
             case 'strength':
             case 'dexterity':
             case 'intelligence':
-                range = STAT_RANGES.PRIMARY(level);
-                break;
+                baseValue = STAT_BASE_VALUES.PRIMARY(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
 
             case 'damageMin':
             case 'damageMax':
-                range = STAT_RANGES.DAMAGE(level);
-                break;
+                baseValue = STAT_BASE_VALUES.DAMAGE(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
 
             case 'magicDamage':
-                range = STAT_RANGES.MAGIC_DMG(level);
-                break;
+                baseValue = STAT_BASE_VALUES.MAGIC_DMG(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
 
             case 'armor':
-                const baseArmorRange = STAT_RANGES.ARMOR(level);
+                baseValue = STAT_BASE_VALUES.ARMOR(level);
                 const classMul = ARMOR_CLASS_MULTIPLIER[profession];
                 const slotMul = ARMOR_SLOT_MULTIPLIER[type] || 1.0;
-                
+
                 // If armor is bonus on non-armor slot (e.g. Ring), reduce it heavily
                 let bonusMalus = 1.0;
                 if (!isImplicit && !['armor', 'helmet', 'boots', 'gloves', 'shield'].includes(type)) {
                     bonusMalus = 0.2;
                 }
 
-                const baseVal = rand(baseArmorRange[0], baseArmorRange[1]);
-                const finalArmor = Math.floor(baseVal * multiplier * classMul * slotMul * bonusMalus);
+                const finalArmor = getStatValue(baseValue, multiplier * classMul * slotMul * bonusMalus, rarity);
                 stats[stat] = Math.max(1, finalArmor);
-                return; // Special exit for Armor
+                return;
 
             case 'hp':
-                range = STAT_RANGES.HP(level);
-                break;
+                baseValue = STAT_BASE_VALUES.HP(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
 
             case 'vitality':
             case 'healingPower':
-                range = STAT_RANGES.VITALITY(level);
-                break;
+                baseValue = STAT_BASE_VALUES.VITALITY(level);
+                stats[stat] = Math.max(1, getStatValue(baseValue, multiplier, rarity));
+                return;
 
             case 'critChance':
             case 'dodgeChance':
             case 'magicResist':
             case 'blockChance':
-                range = STAT_RANGES.PERCENT_MED(level);
+                baseValue = STAT_BASE_VALUES.PERCENT_MED();
                 isPercent = true;
                 break;
 
             case 'critDamage':
-                range = [10, 25]; // %
+                baseValue = 17; // Base 17% (range was 10-25)
                 isPercent = true;
                 break;
 
             case 'piercingDamage':
-                range = STAT_RANGES.FLAT_MED(level);
+                baseValue = STAT_BASE_VALUES.FLAT_MED(level);
                 break;
 
             case 'armorPen':
             case 'magicPen':
-                range = STAT_RANGES.PERCENT_MED(level);
+                baseValue = STAT_BASE_VALUES.PERCENT_MED();
                 isPercent = true;
                 break;
 
             case 'reducedDamage':
-                range = STAT_RANGES.PERCENT_SMALL(level);
+                baseValue = STAT_BASE_VALUES.PERCENT_SMALL();
                 isPercent = true;
                 break;
 
             case 'hpRegen':
-                range = [1, 4]; // %
+                baseValue = 2.5; // Base 2.5%
                 isPercent = true;
                 break;
-            
+
             case 'attackSpeed':
-                range = [1, 5];
+                baseValue = 3; // Base 3 SA
                 break;
-                
+
             case 'initiative':
-                range = STAT_RANGES.INITIATIVE(level);
+                baseValue = STAT_BASE_VALUES.INITIATIVE();
                 break;
+
             case 'stability':
-                range = STAT_RANGES.STABILITY(level);
+                baseValue = STAT_BASE_VALUES.STABILITY();
                 break;
+
             case 'poisonChance':
-                range = STAT_RANGES.POISON(level);
+                baseValue = STAT_BASE_VALUES.POISON();
                 isPercent = true;
                 break;
+
             case 'burnChance':
-                range = STAT_RANGES.BURN(level);
+                baseValue = STAT_BASE_VALUES.BURN();
                 isPercent = true;
                 break;
-            
+
             // Flags
             case 'firstHitShield':
             case 'sanctifiedAura':
                 stats[stat] = 1;
                 return;
-            
+
             case 'overload':
             case 'bloodFury':
             case 'etherealVeil':
             case 'unbreakable':
-                range = [5, 15]; // %
+                baseValue = 10; // Base 10%
                 isPercent = true;
                 break;
-                
+
             // Utility
             case 'bonusGold':
             case 'bonusExp':
             case 'dropChance':
-                range = STAT_RANGES.PERCENT_SMALL(level);
+                baseValue = STAT_BASE_VALUES.PERCENT_SMALL();
+                isPercent = true;
+                break;
+
+            case 'blockValue':
+                baseValue = STAT_BASE_VALUES.FLAT_MED(level);
+                break;
+
+            case 'manaShield':
+                baseValue = STAT_BASE_VALUES.PERCENT_MED();
+                isPercent = true;
+                break;
+
+            case 'damageVsUndead':
+            case 'damageVsBeast':
+            case 'damageVsDemon':
+                baseValue = STAT_BASE_VALUES.PERCENT_BIG();
                 isPercent = true;
                 break;
 
             default:
-                range = [1, 3];
+                baseValue = 2; // Fallback base value
         }
 
-        let val = getRangeValue(range, multiplier);
+        let val = getStatValue(baseValue, multiplier, rarity);
         
         // Apply Slot Specific Multiplier for Stats (e.g. reduced Damage on Rings)
         if (!isImplicit && STAT_SLOT_MULTIPLIER[type] && STAT_SLOT_MULTIPLIER[type][stat]) {

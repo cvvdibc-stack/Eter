@@ -6,6 +6,7 @@ import { ItemType, Item } from '../types';
 import { getAvatarSrc } from '../utils/assets';
 import { ItemTooltip } from './ItemTooltip';
 import { ItemIcon } from './ItemIcon';
+import { getProfessionName } from '../utils/professionUtils';
 
 const StatRow: React.FC<{ label: string, value: string | number, rawValue?: number, cap?: number, base?: number, items?: number, desc?: string }> = ({ label, value, rawValue, cap, base, items, desc }) => {
     const isCapped = rawValue !== undefined && cap !== undefined && rawValue >= cap;
@@ -217,7 +218,7 @@ export const InventoryScreen: React.FC = () => {
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-16 pb-4 px-4 flex flex-col items-center pointer-events-none">
                 <h2 className="text-2xl font-bold text-white font-serif tracking-wider drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">{character.name}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-amber-500 uppercase font-bold tracking-[0.2em] drop-shadow-md">{character.profession}</span>
+                    <span className="text-xs text-amber-500 uppercase font-bold tracking-[0.2em] drop-shadow-md">{getProfessionName(character.profession)}</span>
                     <span className="text-slate-500 text-[10px]">•</span>
                     <span className="text-xs text-slate-300 font-mono drop-shadow-md">Lvl {character.level}</span>
                 </div>
@@ -324,7 +325,7 @@ export const InventoryScreen: React.FC = () => {
                             onClick={() => {
                                 if (!item) return;
                                 if (item.classReq && item.classReq !== character.profession) {
-                                    showToast(`Twoja profesja nie może założyć tego przedmiotu! (Wymagany: ${item.classReq})`, 'error');
+                                    showToast(`Twoja profesja nie może założyć tego przedmiotu! (Wymagany: ${getProfessionName(item.classReq)})`, 'error');
                                     return;
                                 }
                                 equipItem(item, actualIndex);

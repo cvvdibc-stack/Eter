@@ -134,6 +134,7 @@ export interface Item {
   id: string;
   name: string;
   type: ItemType;
+  subtype?: string; // For weapon subtypes (sword, axe, mace, etc.) and offhand types
   rarity: ItemRarity;
   stats: ItemStats;
   value: number;
@@ -142,6 +143,7 @@ export interface Item {
   classReq?: Profession;
   upgradeLevel: number; 
   bonusEffects?: string[];
+  setName?: string; // Set name for set items
 }
 
 export interface TalismanDef {

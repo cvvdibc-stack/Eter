@@ -6,6 +6,7 @@ import { X, Send, Coins, Package, MessageSquare, User, Search } from 'lucide-rea
 import { ItemIcon } from '../ItemIcon';
 import { ItemTooltip } from '../ItemTooltip';
 import { getAvatarSrc } from '../../utils/assets';
+import { getProfessionName } from '../../utils/professionUtils';
 
 interface MailboxComposeModalProps {
   onClose: () => void;
@@ -171,7 +172,7 @@ export const MailboxComposeModal: React.FC<MailboxComposeModalProps> = ({ onClos
                         <div className="flex-1">
                           <div className="text-sm font-bold text-white">{player.name}</div>
                           <div className="text-xs text-slate-400">
-                            {player.profession} • Lvl {player.level}
+                            {getProfessionName(player.profession)} • Lvl {player.level}
                           </div>
                         </div>
                       </div>

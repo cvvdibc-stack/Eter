@@ -1,5 +1,6 @@
 import React from 'react';
-import { Item, ItemType } from '../types';
+import { Item, ItemType, Profession } from '../types';
+import { getProfessionName } from '../utils/professionUtils';
 
 const getTypeName = (type: ItemType) => {
     const names: Record<string, string> = {
@@ -133,7 +134,7 @@ export const ItemTooltip: React.FC<{
                 {itm.classReq && (
                     <div className="flex justify-between text-[10px]">
                         <span className="text-slate-500">Wymagana klasa:</span>
-                        <span className={!playerClass || playerClass === itm.classReq ? 'text-green-500' : 'text-red-500 uppercase font-bold'}>{itm.classReq}</span>
+                        <span className={!playerClass || playerClass === itm.classReq ? 'text-green-500' : 'text-red-500 uppercase font-bold'}>{getProfessionName(itm.classReq)}</span>
                     </div>
                 )}
                 {!label && <div className="text-[9px] text-slate-600 text-center mt-1 italic">Kliknij, aby użyć/przenieść</div>}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import { CharacterCreation } from './components/CharacterCreation';
 import { InventoryScreen } from './components/InventoryScreen';
@@ -17,13 +17,21 @@ import { CharacterSelection } from './components/CharacterSelection';
 import { RankingScreen } from './components/RankingScreen';
 import { TrainerScreen } from './components/TrainerScreen';
 import { ArenaScreen } from './components/ArenaScreen';
+import { LandingPage } from './components/landing/LandingPage';
 
 const GameContent: React.FC = () => {
-  const { view, user } = useGame();
+  const { view, user, changeView } = useGame();
 
-  // 1. Auth Flow
-  if (!user && view === 'AUTH') {
-    return <AuthScreen />;
+  // Show landing page if not logged in
+  useEffect(() => {
+    if (!user && view === 'AUTH') {
+      changeView('LANDING');
+    }
+  }, [user, view, changeView]);
+
+  // 1. Landing Page (shown when not logged in)
+  if (!user && (view === 'AUTH' || view === 'LANDING')) {
+    return <LandingPage />;
   }
 
   // 2. Character Selection Flow

@@ -4,6 +4,7 @@ import { Character } from '../types';
 import { getAvatarSrc } from '../utils/assets';
 import { Sword, RefreshCw, User, Shield } from 'lucide-react';
 import { PlayerProfileModal } from './PlayerProfileModal';
+import { getProfessionName } from '../utils/professionUtils';
 
 export const ArenaScreen: React.FC = () => {
   const { character, loadArenaPlayers, startPvPCombat } = useGame();
@@ -79,7 +80,7 @@ export const ArenaScreen: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-3 text-sm text-slate-400">
-              <span className="uppercase font-semibold">{player.profession}</span>
+              <span className="uppercase font-semibold">{getProfessionName(player.profession)}</span>
               <span className="text-slate-500">•</span>
               <span className="font-mono">Poziom {player.level}</span>
               {levelDiff > 0 && (

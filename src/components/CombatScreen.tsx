@@ -6,6 +6,7 @@ import { generateLoot } from '../utils/lootSystem';
 import { DerivedStats, Monster, CombatTurn } from '../types';
 import { Sword, Skull, Zap, Heart } from 'lucide-react';
 import { getAvatarSrc, getMonsterSrc } from '../utils/assets';
+import { getProfessionName } from '../utils/professionUtils';
 
 export const CombatScreen: React.FC = () => {
   const { 
@@ -553,7 +554,7 @@ export const CombatScreen: React.FC = () => {
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/80 to-transparent p-3 flex flex-col items-center">
                 <h3 className="text-white font-bold text-lg font-serif drop-shadow-md">{character.name}</h3>
                 <div className="flex items-center gap-2 text-[10px] text-amber-500 font-bold uppercase tracking-wider mt-1">
-                    <span>{character.profession}</span>
+                    <span>{getProfessionName(character.profession)}</span>
                     <span className="text-slate-500">•</span>
                     <span>Lvl {character.level}</span>
                 </div>

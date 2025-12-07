@@ -382,12 +382,6 @@ export const calculateDerivedStats = (
     poisonChance: ePoison,
     burnChance: eBurn,
     
-    uncappedStrength: 0,
-    uncappedDexterity: 0,
-    uncappedIntelligence: 0,
-    uncappedVitality: 0,
-    statCap: 0,
-
     // Mechanics
     etherealVeil: eEthereal,
     bloodFury: eBloodFury,

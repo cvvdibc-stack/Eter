@@ -10,7 +10,7 @@ export const PROFESSIONS: Record<Profession, {
   passive: string;
 }> = {
   mage: {
-    name: 'Mag',
+    name: 'MAG',
     role: 'Burst Magic DPS',
     description: 'Potężny mag rażący wrogów zaklęciami z dystansu.',
     primaryStat: 'intelligence',
@@ -19,7 +19,7 @@ export const PROFESSIONS: Record<Profession, {
     passive: 'Mistrz Eteru: Obrażenia magiczne skalują się o 170% Inteligencji',
   },
   warrior: {
-    name: 'Wojownik',
+    name: 'WOJOWNIK',
     role: 'Tank / Bruiser',
     description: 'Wytrzymały wojownik walczący w pierwszej linii.',
     primaryStat: 'strength',
@@ -28,7 +28,7 @@ export const PROFESSIONS: Record<Profession, {
     passive: 'Żelazna Skóra: Obrażenia fizyczne skalują się o 180% Siły',
   },
   assassin: {
-    name: 'Zabójca',
+    name: 'ZABÓJCA',
     role: 'DPS / Krytyki',
     description: 'Szybki zabójca polegający na unikach i ciosach krytycznych.',
     primaryStat: 'dexterity',
@@ -37,7 +37,7 @@ export const PROFESSIONS: Record<Profession, {
     passive: 'Cień: 1% szansy na trafienie krytyczne za każdy punkt Zręczności',
   },
   cleric: {
-    name: 'Kleryk',
+    name: 'KLERYK',
     role: 'Support / Hybrid',
     description: 'Święty wojownik leczący się podczas walki.',
     primaryStat: 'intelligence', // Hybrid usually but scaling with INT for dmg mostly

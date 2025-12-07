@@ -6,7 +6,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { XP_TO_NEXT_LEVEL, calculateDerivedStats, calculateMaxTrainableStat, getStatsForLevel } from '../utils/formulas';
 import { generateItem } from '../utils/itemGenerator';
 
-type GameView = 'AUTH' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING' | 'TRAINER';
+type GameView = 'AUTH' | 'LANDING' | 'CHAR_SELECT' | 'CHARACTER_CREATION' | 'HUB' | 'COMBAT' | 'INVENTORY' | 'SHOP' | 'EXPEDITION' | 'DOCTOR' | 'PREMIUM' | 'DUNGEON' | 'ARENA' | 'BESTIARY' | 'TALISMANS' | 'HISTORY' | 'MARKET' | 'RANKING' | 'TRAINER';
 
 interface GameState {
   user: User | null;
@@ -101,7 +101,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
   const [myCharacters, setMyCharacters] = useState<Character[]>([]);
-  const [view, setView] = useState<GameView>('AUTH');
+  const [view, setView] = useState<GameView>('LANDING');
   const [logs, setLogs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [unlockedMonsters, setUnlockedMonsters] = useState<string[]>(['monster_1']);
@@ -676,8 +676,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (item.classReq && item.classReq !== character.profession) {
-         addLog(`Wymagana klasa: ${item.classReq}`);
-         showToast(`Ten przedmiot jest tylko dla klasy: ${item.classReq}`, 'error');
+         const professionName = PROFESSIONS[item.classReq].name;
+         addLog(`Wymagana klasa: ${professionName}`);
+         showToast(`Ten przedmiot jest tylko dla klasy: ${professionName}`, 'error');
          return;
     }
 
